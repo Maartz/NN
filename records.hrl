@@ -1,0 +1,4 @@
+-record(sensor, {id, cortex_id, name, vector_length, fanout_ids}).
+-record(actuator, {id, cortex_id, name, vector_length, fanin_ids}).
+-record(neuron, {id, cortex_id, activation_function, input_ids, output_ids}).
+-record(cortex, {id, sensor_ids, actuator_ids, neuron_ids}).

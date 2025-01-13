@@ -1,0 +1,29 @@
+-module(sensor).
+-compile(export_all).
+-include("records.hrl").
+
+gen(ExoSelfPId, Node) ->
+    spawn(Node, ?MODULE, loop, [ExoSelfPId]).
+
+loop(ExoSelfPId) ->
+    receive
+        {ExoSelfPId, {Id, CortexPId, SensorName, VL, FanoutPIds}} ->
+            loop(Id, CortexPId, SensorName, VL, FanoutPIds)
+    end.
+
+loop(Id, CortexPId, SensorName, VL, FanoutPIds) ->
+    receive
+        {CortexPId, sync} ->
+            SensoryVector = sensor:sensor_name(VL),
+            [Pid ! {self(), forward, SensoryVector} || Pid <- FanoutPIds],
+            loop(Id, CortexPId, SensorName, VL, FanoutPIds);
+        {CortexId, terminate} ->
+            ok
+        end.
+
+rng(VL) ->
+    rng(VL, []).
+rng(0, Acc) ->
+    Acc;
+rng(VL, Acc) ->
+    rng(VL - 1, [rand:uniform() | Acc]).
