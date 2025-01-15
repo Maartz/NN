@@ -29,6 +29,25 @@ graph TD
     B -->|Manages| F[Monitor]
 ```
 
+### Message Flow
+
+```mermaid
+sequenceDiagram
+    participant E as ExoSelf
+    participant C as Cortex
+    participant N as Neuron
+    participant M as Monitor
+
+    E->>C: {ExoSelf, start}
+    C->>M: spawn(monitor)
+    Note over M: Monitor Started
+    C->>N: {sync}
+    N->>M: {neuron_update, Id, Activation}
+    Note over M: Display Update
+    C->>M: {terminate}
+    Note over M: Monitor Stopped
+```
+
 ### Key Components
 
 ```erlang
@@ -224,4 +243,3 @@ This will:
 - Coordinated by ExoSelf process
 
 Let me know if you need any clarification or have questions about specific parts of the implementation!
-
