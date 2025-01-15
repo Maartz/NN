@@ -23,11 +23,11 @@ loop(Id, CortexPId, ActivationFunction, {[{InputPId, Weights} | InputPIds], MInp
             ok
     end;
 loop(Id, CortexPId, ActivationFunction, {[Bias], MInputPIds}, OutputPIds, Acc) ->
-    Output = neuron:activation_function(Acc + Bias),
+    Output = neuron:ActivationFunction(Acc + Bias),
     [OutputPId ! {self(), forward, [Output]} || OutputPId <- OutputPIds],
     loop(Id, CortexPId, ActivationFunction, {MInputPIds, MInputPIds}, OutputPIds, 0);
 loop(Id, CortexPId, ActivationFunction, {[], MInputPIds}, OutputPIds, Acc) ->
-    Output = neuron:activation_function(Acc),
+    Output = neuron:ActivationFunction(Acc),
     [OutputPId ! {self(), forward, [Output]} || OutputPId <- OutputPIds],
     loop(Id, CortexPId, ActivationFunction, {MInputPIds, MInputPIds}, OutputPIds, 0).
 

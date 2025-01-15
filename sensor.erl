@@ -14,10 +14,10 @@ loop(ExoSelfPId) ->
 loop(Id, CortexPId, SensorName, VL, FanoutPIds) ->
     receive
         {CortexPId, sync} ->
-            SensoryVector = sensor:sensor_name(VL),
+            SensoryVector = sensor:SensorName(VL),
             [Pid ! {self(), forward, SensoryVector} || Pid <- FanoutPIds],
             loop(Id, CortexPId, SensorName, VL, FanoutPIds);
-        {CortexId, terminate} ->
+        {CortexPId, terminate} ->
             ok
         end.
 

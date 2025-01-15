@@ -19,7 +19,7 @@ loop(Id, CortexPId, ActuatorName, {[FromPId | FaninPIds], MFaninPIds}, Acc) ->
             ok
         end;
 loop(Id, CortexPId, ActuatorName, {[], MFaninPIds}, Acc) ->
-    actuator:actuator_name(lists:reverse(Acc)),
+    actuator:ActuatorName(lists:reverse(Acc)),
     CortexPId ! {self(), sync},
     loop(Id, CortexPId, ActuatorName, {MFaninPIds, MFaninPIds}, []).
 

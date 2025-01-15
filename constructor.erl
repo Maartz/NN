@@ -25,7 +25,7 @@ construct_genotype(FileName, SensorName, ActuatorName, HiddenLayerDensities) ->
     Cortex = create_cortex(Cx_id, [S#sensor.id], [A#actuator.id], NIds),
     Genotype = lists:flatten([Cortex, Sensor, Actuator | Neurons]),
     {ok, File} = file:open(FileName, write),
-    lists:foreach(fun(X) -> io:format(File, "~p~n", [X]) end, Genotype),
+    lists:foreach(fun(X) -> io:format(File, "~p.~n", [X]) end, Genotype),
     file:close(File).
 
 %%%%%%%%%%%%%%%%%%%
