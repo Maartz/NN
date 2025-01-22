@@ -25,3 +25,10 @@ loop(Id, CortexPId, ActuatorName, {[], MFaninPIds}, Acc) ->
 
 pts(Result) ->
     io:format("actuators:pts(Result): ~p~n", [Result]).
+
+xor_SendOutput(Output,Scape)->
+    Scape ! {self(),action,Output},
+    receive
+    {Scape,Fitness,HaltFlag}->
+    {Fitness,HaltFlag}
+    end.

@@ -12,7 +12,7 @@ construct_genotype(FileName, SensorName, ActuatorName, HiddenLayerDensities) ->
     A = create_actuator(ActuatorName),
     Output_VL = A#actuator.vector_length,
     LayerDensities = lists:append(HiddenLayerDensities, [Output_VL]),
-    Cx_id = {cortex_id, generate_id()},
+    Cx_id = {cortex_id, helpers:generate_id()},
 
     Neurons = create_neuro_layers(Cx_id, S, A, LayerDensities),
     [Input_Layer | _] = Neurons,
@@ -35,7 +35,7 @@ construct_genotype(FileName, SensorName, ActuatorName, HiddenLayerDensities) ->
 create_sensor(SensorName) ->
     case SensorName of
         rng ->
-            #sensor{id = {sensor, generate_id()},
+            #sensor{id = {sensor, helpers:generate_id()},
                     name = rng,
                     vector_length = 2};
         _ ->
@@ -45,7 +45,7 @@ create_sensor(SensorName) ->
 create_actuator(ActuatorName) ->
     case ActuatorName of
         pts ->
-            #actuator{id = {actuator, generate_id()},
+            #actuator{id = {actuator, helpers:generate_id()},
                       name = pts,
                       vector_length = 1};
         _ ->
@@ -56,7 +56,7 @@ create_neuro_layers(Cortex_id, Sensor, Actuator, LayerDensities) ->
     Inputs_IdPs = [{Sensor#sensor.id, Sensor#sensor.vector_length}],
     Total_Layers = length(LayerDensities),
     [FL_Neurons | Next_LDs] = LayerDensities,
-    Nlds = [{neuron, {1, Id}} || Id <- generate_ids(FL_Neurons, [])],
+    Nlds = [{neuron, {1, Id}} || Id <- helpers:generate_ids(FL_Neurons, [])],
     create_neuro_layers(Cortex_id,
                         Actuator#actuator.id,
                         1,
@@ -74,7 +74,7 @@ create_neuro_layers(Cortex_id,
                     NIds,
                     [Next_LD | LDs],
                     Acc) ->
-    Output_Nlds = [{neuron, {LayerIndex + 1, Id}} || Id <- generate_ids(Next_LD, [])],
+    Output_Nlds = [{neuron, {LayerIndex + 1, Id}} || Id <- helpers:generate_ids(Next_LD, [])],
     Layer_Neurons = create_neuro_layer(Cortex_id, Input_IdPs, NIds, Output_Nlds, []),
     Next_Input_IdPs = [{NId, 1} || NId <- NIds],
     create_neuro_layers(Cortex_id,
@@ -122,16 +122,6 @@ create_neural_weights(0, Acc) ->
 create_neural_weights(Index, Acc) ->
     Weight = rand:uniform() - 0.5,
     create_neural_weights(Index - 1, [Weight | Acc]).
-
-generate_ids(0, Acc) ->
-    Acc;
-generate_ids(Index, Acc) ->
-    Id = generate_id(),
-    generate_ids(Index - 1, [Id | Acc]).
-
-generate_id() ->
-    {MegaSeconds, Seconds, MicroSeconds} = os:timestamp(),
-    1 / (MegaSeconds * 1000000 + Seconds + MicroSeconds / 1000000).
 
 create_cortex(Cortex_id, Sensor_ids, Actuator_ids, Neuron_ids) ->
     #cortex{id = Cortex_id,

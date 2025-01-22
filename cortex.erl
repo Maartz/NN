@@ -1,44 +1,47 @@
 -module(cortex).
 -compile(export_all).
 -include("records.hrl").
+-record(state,{id,exoself_pid,spids,npids,apids,cycle_acc=0,fitness_acc=0,endflag=0,status}).
 
-gen(ExoSelfPId, Node) ->
-    spawn(Node, ?MODULE, loop, [ExoSelfPId]).
+gen(ExoSelf_PId,Node)->
+	spawn(Node,?MODULE,prep,[ExoSelf_PId]).
 
+prep(ExoSelf_PId) ->
+	{V1,V2,V3} = now(),
+	random:seed(V1,V2,V3),
+	receive 
+		{ExoSelf_PId,Id,SPIds,NPIds,APIds} ->
+			put(start_time,now()),
+			[SPId ! {self(),sync} || SPId <- SPIds],
+			loop(Id,ExoSelf_PId,SPIds,{APIds,APIds},NPIds,1,0,0,active)
+	end.
 
-loop(ExoSelfPId) ->
-    receive
-        {ExoSelfPId, {Id, SPIds, APIds, NPIds}, TotalSteps} ->
-            [SPId ! {self(), sync} || SPId <- SPIds],
-            loop(Id, ExoSelfPId, SPIds, {APIds, APIds}, NPIds, TotalSteps)
-    end.
-
-loop(Id, ExoSelfPId, SPIds, {_APIds, MAPIds}, NPIds, 0) ->
-    io:format("Cortex ~p is backing up and terminating.~n", [Id]),
-    NeuronIDsWeights = get_backup(NPIds, []),
-    ExoSelfPId ! {self(), bakcup, NeuronIDsWeights},
-    [PId ! {self(), terminate} || PId <- SPIds],
-    [PId ! {self(), terminate} || PId <- MAPIds],
-    [PId ! {self(), terminate} || PId <- NPIds];
-loop(Id, ExoSelfPId, SPIds, {[APId | APIds], MAPIds}, NPIds, Step) ->
-    receive
-        {APId, sync} ->
-            loop(Id, ExoSelfPId, SPIds, {APIds, MAPIds}, NPIds, Step);
-        terminate ->
-            io:format("Cortex: ~p is terminating~n", [Id]),
-            [PId ! {self(), terminate} || PId <- SPIds],
-            [PId ! {self(), terminate} || PId <- MAPIds],
-            [PId ! {self(), terminate} || PId <- NPIds]
-    end;
-loop(Id, ExoSelfPId, SPIds, {[], MAPIds}, NPIds, Step) ->
-    [PId ! {self(), sync} || PId <- SPIds],
-    loop(Id, ExoSelfPId, SPIds, {MAPIds, MAPIds}, NPIds, Step - 1).
-
-get_backup([NPId | NPIds], Acc) ->
-    NPId ! {self(), get_backup},
-    receive
-        {NPId, NId, WeightTuples} ->
-            get_backup(NPIds, [{NId, WeightTuples} | Acc])
-    end;
-get_backup([], Acc) ->
-    Acc.
+loop(Id,ExoSelf_PId,SPIds,{[APId|APIds],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,active) ->
+	receive 
+		{APId,sync,Fitness,EndFlag} ->
+			loop(Id,ExoSelf_PId,SPIds,{APIds,MAPIds},NPIds,CycleAcc,FitnessAcc+Fitness,EFAcc+EndFlag,active);
+		terminate ->
+			io:format("Cortex:~p is terminating.~n",[Id]),
+			[PId ! {self(),terminate} || PId <- SPIds],
+			[PId ! {self(),terminate} || PId <- MAPIds],
+			[PId ! {self(),termiante} || PId <- NPIds]
+	end;
+loop(Id,ExoSelf_PId,SPIds,{[],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,active)->
+	case EFAcc > 0 of
+		true ->
+			TimeDif=timer:now_diff(now(),get(start_time)),
+			ExoSelf_PId ! {self(),evaluation_completed,FitnessAcc,CycleAcc,TimeDif},
+			loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,inactive);
+		false ->
+			[PId ! {self(),sync} || PId <- SPIds],
+			loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,CycleAcc+1,FitnessAcc,EFAcc,active)
+	end;
+loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,_CycleAcc,_FitnessAcc,_EFAcc,inactive)->
+	receive
+		{ExoSelf_PId,reactivate}->
+			put(start_time,now()),
+			[SPId ! {self(),sync} || SPId <- SPIds],
+			loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,1,0,0,active);
+		{ExoSelf_PId,terminate}->
+			ok
+	end.
