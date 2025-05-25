@@ -19,7 +19,6 @@ loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{[From_PId|Fanin_PIds],MFanin_PIds},Acc) 
 			ok
 	end;
 loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{[],MFanin_PIds},Acc)->
-    io:format("Actuator ~p: Received all inputs, processing~n", [Id]),
     {Fitness,EndFlag} = actuator:AName(lists:reverse(Acc),Scape),
     io:format("Actuator ~p: Got fitness ~p, endflag ~p~n", [Id, Fitness, EndFlag]),
     Cx_PId ! {self(),sync,Fitness,EndFlag},

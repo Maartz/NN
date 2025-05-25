@@ -34,7 +34,6 @@ loop(FileName,Genotype,IdsNPIds,Cx_PId,SPIds,NPIds,APIds,ScapePIds,HighestFitnes
   io:format("ExoSelf: Waiting for evaluation (Attempt ~p)~n", [Attempt]),
 	receive
 		{Cx_PId,evaluation_completed,Fitness,Cycles,Time}->
-      io:format("ExoSelf: Got fitness ~p~n", [Fitness]),
 			{U_HighestFitness,U_Attempt}=case Fitness > HighestFitness of
 				true ->
 					[NPId ! {self(),weight_backup} || NPId <- NPIds],
