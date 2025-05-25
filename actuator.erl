@@ -19,15 +19,16 @@ loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{[From_PId|Fanin_PIds],MFanin_PIds},Acc) 
 			ok
 	end;
 loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{[],MFanin_PIds},Acc)->
-	{Fitness,EndFlag} = actuator:AName(lists:reverse(Acc),Scape),
-	Cx_PId ! {self(),sync,Fitness,EndFlag},
-	loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{MFanin_PIds,MFanin_PIds},[]).
+    io:format("Actuator ~p: Received all inputs, processing~n", [Id]),
+    {Fitness,EndFlag} = actuator:AName(lists:reverse(Acc),Scape),
+    io:format("Actuator ~p: Got fitness ~p, endflag ~p~n", [Id, Fitness, EndFlag]),
+    Cx_PId ! {self(),sync,Fitness,EndFlag},
+    loop(Id,ExoSelf_PId,Cx_PId,Scape,AName,{MFanin_PIds,MFanin_PIds},[]).
 
 
 pts(Result,_Scape)->
 	io:format("actuator:pts(Result): ~p~n",[Result]),
 	{1,0}.
-%The pts/2 actuation function simply prints to screen the vector passed to it.
 
 xor_SendOutput(Output,Scape)->
 	Scape ! {self(),action,Output},

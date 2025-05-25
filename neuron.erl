@@ -66,7 +66,7 @@ perturb_IPIdPs(MP,[Bias],Acc)->
 	lists:reverse([U_Bias|Acc]);
 perturb_IPIdPs(_MP,[],Acc)->
 	lists:reverse(Acc).
-	
+
 perturb_weights(MP,[W|Weights],Acc)->
     U_W = case rand:uniform() < MP of
         true->
@@ -77,10 +77,10 @@ perturb_weights(MP,[W|Weights],Acc)->
     perturb_weights(MP,Weights,[U_W|Acc]);
 perturb_weights(_MP,[],Acc)->
     lists:reverse(Acc).
-    
-    sat(Val,Min,Max)->
-        if
-            Val < Min -> Min;
-            Val > Max -> Max;
-            true -> Val
-        end.
+
+sat(Val,Min,Max)->
+  if
+      Val < Min -> Min;
+      Val > Max -> Max;
+      true -> Val
+  end.

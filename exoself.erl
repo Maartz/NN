@@ -10,6 +10,7 @@ map(FileName)->
 	spawn(exoself,prep,[FileName,Genotype]).
 
 prep(FileName,Genotype)->
+  io:format("ExoSelf: Starting prep for ~p~n", [FileName]),
 	rand:seed(exsplus),
 	IdsNPIds = ets:new(idsNpids,[set,private]), 
 	Cx = genotype:read(Genotype,cortex),
@@ -26,11 +27,14 @@ prep(FileName,Genotype)->
 	link_Neurons(Genotype,NIds,IdsNPIds),
 	{SPIds,NPIds,APIds}=link_Cortex(Cx,IdsNPIds),
 	Cx_PId = ets:lookup_element(IdsNPIds,Cx#cortex.id,2),
+  io:format("ExoSelf: Entering main loop~n"),
 	loop(FileName,Genotype,IdsNPIds,Cx_PId,SPIds,NPIds,APIds,ScapePIds,0,0,0,0,1).
 
 loop(FileName,Genotype,IdsNPIds,Cx_PId,SPIds,NPIds,APIds,ScapePIds,HighestFitness,EvalAcc,CycleAcc,TimeAcc,Attempt)->
+  io:format("ExoSelf: Waiting for evaluation (Attempt ~p)~n", [Attempt]),
 	receive
 		{Cx_PId,evaluation_completed,Fitness,Cycles,Time}->
+      io:format("ExoSelf: Got fitness ~p~n", [Fitness]),
 			{U_HighestFitness,U_Attempt}=case Fitness > HighestFitness of
 				true ->
 					[NPId ! {self(),weight_backup} || NPId <- NPIds],
@@ -84,21 +88,23 @@ loop(FileName,Genotype,IdsNPIds,Cx_PId,SPIds,NPIds,APIds,ScapePIds,HighestFitnes
 		[PId ! {self(),ScapeName} || {PId,ScapeName} <- SN_Tuples],
 		[PId || {PId,_ScapeName} <-SN_Tuples].
 
-	link_Sensors(Genotype,[SId|Sensor_Ids],IdsNPIds) ->
-		R=genotype:read(Genotype,SId),
-		SPId = ets:lookup_element(IdsNPIds,SId,2),
-		Cx_PId = ets:lookup_element(IdsNPIds,R#sensor.cortex_id, 2),
-		SName = R#sensor.name,
-		Fanout_Ids = R#sensor.fanout_ids,
-		Fanout_PIds = [ets:lookup_element(IdsNPIds,Id,2) || Id <- Fanout_Ids],
-		Scape=case R#sensor.scape of
-			{private,ScapeName}->
-				ets:lookup_element(IdsNPIds,ScapeName,2)
-		end,
-		SPId ! {self(),{SId,Cx_PId,Scape,SName,R#sensor.vector_length, Fanout_PIds}},
+  link_Sensors(Genotype,[SId|Sensor_Ids],IdsNPIds) ->
+    R=genotype:read(Genotype,SId),
+    SPId = ets:lookup_element(IdsNPIds,SId,2),
+    Cx_PId = ets:lookup_element(IdsNPIds,R#sensor.cortex_id, 2),
+    SName = R#sensor.name,
+    Fanout_Ids = R#sensor.fanout_ids,
+    Fanout_PIds = [ets:lookup_element(IdsNPIds,Id,2) || Id <- Fanout_Ids],
+    Scape=case R#sensor.scape of
+        {private,ScapeName}->
+            ets:lookup_element(IdsNPIds,ScapeName,2)
+    end,
+    SPId ! {self(),{SId,Cx_PId,Scape,SName,R#sensor.vector_length, Fanout_PIds}},
 		link_Sensors(Genotype,Sensor_Ids,IdsNPIds);
 	link_Sensors(_Genotype,[],_IdsNPIds)->
 		ok.
+
+
 	link_Actuators(Genotype,[AId|Actuator_Ids],IdsNPIds) ->
 		R=genotype:read(Genotype,AId),
 		APId = ets:lookup_element(IdsNPIds,AId,2),

@@ -10,7 +10,8 @@ prep(ExoSelf_PId) ->
   rand:seed(exsplus, os:timestamp()),
 	receive 
 		{ExoSelf_PId,Id,SPIds,NPIds,APIds} ->
-			put(start_time,now()),
+      io:format("Cortex: Starting with ~p sensors, ~p neurons, ~p actuators~n",[length(SPIds), length(NPIds), length(APIds)]),
+			put(start_time, os:timestamp()),
 			[SPId ! {self(),sync} || SPId <- SPIds],
 			loop(Id,ExoSelf_PId,SPIds,{APIds,APIds},NPIds,1,0,0,active)
 	end.
@@ -28,7 +29,7 @@ loop(Id,ExoSelf_PId,SPIds,{[APId|APIds],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,
 loop(Id,ExoSelf_PId,SPIds,{[],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,active)->
 	case EFAcc > 0 of
 		true ->
-			TimeDif=timer:now_diff(now(),get(start_time)),
+      TimeDif = timer:now_diff(os:timestamp(), get(start_time)),
 			ExoSelf_PId ! {self(),evaluation_completed,FitnessAcc,CycleAcc,TimeDif},
 			loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,inactive);
 		false ->
@@ -38,7 +39,7 @@ loop(Id,ExoSelf_PId,SPIds,{[],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,active)->
 loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,_CycleAcc,_FitnessAcc,_EFAcc,inactive)->
 	receive
 		{ExoSelf_PId,reactivate}->
-			put(start_time,now()),
+			put(start_time, os:timestamp()),
 			[SPId ! {self(),sync} || SPId <- SPIds],
 			loop(Id,ExoSelf_PId,SPIds,{MAPIds,MAPIds},NPIds,1,0,0,active);
 		{ExoSelf_PId,terminate}->

@@ -8,9 +8,15 @@
 go(Morphology,HiddenLayerDensities)->
 	go(Morphology,HiddenLayerDensities,?MAX_ATTEMPTS,?EVAL_LIMIT,?FITNESS_TARGET).
 go(Morphology,HiddenLayerDensities,MaxAttempts,EvalLimit,FitnessTarget)->
-	PId = spawn(trainer,loop,[Morphology,HiddenLayerDensities,FitnessTarget,{1,MaxAttempts},{0,EvalLimit},{0,best},experimental,0,0]),
-	register(trainer,PId),
-	PId.
+	%PId = spawn(trainer,loop,[Morphology,HiddenLayerDensities,FitnessTarget,{1,MaxAttempts},{0,EvalLimit},{0,best},experimental,0,0]),
+	%register(trainer,PId),
+	%PId.
+  Unique = erlang:unique_integer([positive]),
+  ExpG = list_to_atom("experimental_" ++ integer_to_list(Unique)),
+  BestG = list_to_atom("best_" ++ integer_to_list(Unique)),
+  PId = spawn(trainer,loop,[Morphology,HiddenLayerDensities,FitnessTarget,
+                            {1,MaxAttempts},{0,EvalLimit},{0,BestG},ExpG,0,0]),
+  PId.
 
 loop(Morphology,_HiddenLayerDensities,FT,{AttemptAcc,MA},{EvalAcc,EL},{BestFitness,BestG},_ExpG,CAcc,TAcc) when (AttemptAcc>=MA) or (EvalAcc>=EL) or (BestFitness>=FT)->
 	genotype:print(BestG),
