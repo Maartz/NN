@@ -12,9 +12,15 @@ go(Morphology,HiddenLayerDensities)->
 go(Morphology,HiddenLayerDensities,TotRuns)->
 	go(Morphology,HiddenLayerDensities,?MAX_ATTEMPTS,?EVAL_LIMIT,?FITNESS_TARGET,TotRuns).
 go(Morphology,HiddenLayerDensities,MaxAttempts,EvalLimit,FitnessTarget,TotRuns)->
-	PId = spawn(benchmarker,loop,[Morphology,HiddenLayerDensities,MaxAttempts,EvalLimit,FitnessTarget,TotRuns,[],[],[],[]]),
-	register(benchmarker,PId).
-	
+  case whereis(benchmarker) of
+      undefined -> ok;
+      OldPid -> 
+          unregister(benchmarker),
+          exit(OldPid, kill)
+  end,
+  PId = spawn(benchmarker,loop,[Morphology,HiddenLayerDensities,MaxAttempts,EvalLimit,FitnessTarget,TotRuns,[],[],[],[]]),
+  register(benchmarker,PId).
+
 loop(Morphology,_HiddenLayerDensities,_MA,_EL,_FT,0,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)->
 	io:format("Benchmark results for:~p~n",[Morphology]),
 	io:format("Fitness::~n Max:~p~n Min:~p~n Avg:~p~n Std:~p~n",[lists:max(FitnessAcc),lists:min(FitnessAcc),avg(FitnessAcc),std(FitnessAcc)]),
@@ -22,7 +28,7 @@ loop(Morphology,_HiddenLayerDensities,_MA,_EL,_FT,0,FitnessAcc,EvalsAcc,CyclesAc
 	io:format("Cycles::~n Max:~p~n Min:~p~n Avg:~p~n Std:~p~n",[lists:max(CyclesAcc),lists:min(CyclesAcc),avg(CyclesAcc),std(CyclesAcc)]),
 	io:format("Time::~n Max:~p~n Min:~p~n Avg:~p~n Std:~p~n",[lists:max(TimeAcc),lists:min(TimeAcc),avg(TimeAcc),std(TimeAcc)]);
 loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)->
-    io:format("~nStarting benchmark run ~p of ~p~n", [?TOT_RUNS - BenchmarkIndex + 1, ?TOT_RUNS]),
+    io:format("~nStarting benchmark run ~p of ~p~n", [BenchmarkIndex, BenchmarkIndex + length(FitnessAcc)]),
     case whereis(trainer) of
         undefined -> ok;
         OldPid -> 
