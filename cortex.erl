@@ -7,8 +7,7 @@ gen(ExoSelf_PId,Node)->
 	spawn(Node,?MODULE,prep,[ExoSelf_PId]).
 
 prep(ExoSelf_PId) ->
-	{V1,V2,V3} = now(),
-	random:seed(V1,V2,V3),
+  rand:seed(exsplus, os:timestamp()),
 	receive 
 		{ExoSelf_PId,Id,SPIds,NPIds,APIds} ->
 			put(start_time,now()),
@@ -24,7 +23,7 @@ loop(Id,ExoSelf_PId,SPIds,{[APId|APIds],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,
 			io:format("Cortex:~p is terminating.~n",[Id]),
 			[PId ! {self(),terminate} || PId <- SPIds],
 			[PId ! {self(),terminate} || PId <- MAPIds],
-			[PId ! {self(),termiante} || PId <- NPIds]
+			[PId ! {self(),terminate} || PId <- NPIds]
 	end;
 loop(Id,ExoSelf_PId,SPIds,{[],MAPIds},NPIds,CycleAcc,FitnessAcc,EFAcc,active)->
 	case EFAcc > 0 of

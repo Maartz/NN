@@ -10,7 +10,7 @@ map(FileName)->
 	spawn(exoself,prep,[FileName,Genotype]).
 
 prep(FileName,Genotype)->
-	rand:seed(exsss),
+	rand:seed(exsplus),
 	IdsNPIds = ets:new(idsNpids,[set,private]), 
 	Cx = genotype:read(Genotype,cortex),
 	Sensor_Ids = Cx#cortex.sensor_ids,
@@ -181,6 +181,6 @@ convert_process_weights_to_neuron_weights(_IdsNPIds,[Bias],Acc) ->
 terminate_phenotype(Cx_PId,SPIds,NPIds,APIds,ScapePIds)->
   [PId ! {self(),terminate} || PId <- SPIds],
   [PId ! {self(),terminate} || PId <- APIds],
-  [PId ! {self(),termiante} || PId <- NPIds],
+  [PId ! {self(),terminate} || PId <- NPIds],
   [PId ! {self(),terminate} || PId <- ScapePIds],
   Cx_PId ! {self(),terminate}.

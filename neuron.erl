@@ -8,7 +8,7 @@ gen(ExoSelf_PId,Node)->
 	spawn(Node,?MODULE,prep,[ExoSelf_PId]).
 
 prep(ExoSelf_PId) ->
-    rand:seed(exsss),
+    rand:seed(exsplus),
 	receive 
 		{ExoSelf_PId,{Id,Cx_PId,AF,Input_PIdPs,Output_PIds}} ->
 			loop(Id,ExoSelf_PId,Cx_PId,AF,{Input_PIdPs,Input_PIdPs},Output_PIds,0)
