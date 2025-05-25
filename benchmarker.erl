@@ -22,13 +22,42 @@ loop(Morphology,_HiddenLayerDensities,_MA,_EL,_FT,0,FitnessAcc,EvalsAcc,CyclesAc
 	io:format("Cycles::~n Max:~p~n Min:~p~n Avg:~p~n Std:~p~n",[lists:max(CyclesAcc),lists:min(CyclesAcc),avg(CyclesAcc),std(CyclesAcc)]),
 	io:format("Time::~n Max:~p~n Min:~p~n Avg:~p~n Std:~p~n",[lists:max(TimeAcc),lists:min(TimeAcc),avg(TimeAcc),std(TimeAcc)]);
 loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)->
-	Trainer_PId = trainer:go(Morphology,HiddenLayerDensities,MA,EL,FT),
-	receive
-		{Trainer_PId,Fitness,Evals,Cycles,Time}->
-			loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex-1,[Fitness|FitnessAcc],[Evals|EvalsAcc],[Cycles|CyclesAcc],[Time|TimeAcc]);
-		terminate ->
-			loop(Morphology,HiddenLayerDensities,MA,EL,FT,0,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)
-	end.
+    io:format("~nStarting benchmark run ~p of ~p~n", [?TOT_RUNS - BenchmarkIndex + 1, ?TOT_RUNS]),
+    case whereis(trainer) of
+        undefined -> ok;
+        OldPid -> 
+            unregister(trainer),
+            exit(OldPid, kill)
+    end,
+    Trainer_PId = trainer:go(Morphology,HiddenLayerDensities,MA,EL,FT),
+    
+    receive
+        {Trainer_PId,Fitness,Evals,Cycles,Time}->
+            io:format("Run complete: Fitness=~p Evals=~p~n", [Fitness, Evals]),
+            
+            catch unregister(trainer),
+            
+            loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex-1,
+                 [Fitness|FitnessAcc],[Evals|EvalsAcc],[Cycles|CyclesAcc],[Time|TimeAcc]);
+                 
+        terminate ->
+            loop(Morphology,HiddenLayerDensities,MA,EL,FT,0,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)
+            
+    after 300000 -> % 5 minutes timeout
+        io:format("Timeout on benchmark run ~p~n", [BenchmarkIndex]),
+        catch unregister(trainer),
+        exit(Trainer_PId, timeout),
+        loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex-1,
+             FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)
+    end.
+%loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)->
+%	Trainer_PId = trainer:go(Morphology,HiddenLayerDensities,MA,EL,FT),
+%	receive
+%		{Trainer_PId,Fitness,Evals,Cycles,Time}->
+%			loop(Morphology,HiddenLayerDensities,MA,EL,FT,BenchmarkIndex-1,[Fitness|FitnessAcc],[Evals|EvalsAcc],[Cycles|CyclesAcc],[Time|TimeAcc]);
+%		terminate ->
+%			loop(Morphology,HiddenLayerDensities,MA,EL,FT,0,FitnessAcc,EvalsAcc,CyclesAcc,TimeAcc)
+%	end.
 
 avg(List)->
 	lists:sum(List)/length(List).
