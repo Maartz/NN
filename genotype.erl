@@ -5,7 +5,7 @@
 construct(Morphology,HiddenLayerDensities) ->
 	construct(ffnn,Morphology,HiddenLayerDensities).
 construct(FileName,Morphology,HiddenLayerDensities) ->
-    rand:seed(exsplus),
+  rand:seed(exsplus),
 	S = morphology:get_InitSensor(Morphology),
 	A = morphology:get_InitActuator(Morphology),
 	Output_VL = A#actuator.vector_length,
