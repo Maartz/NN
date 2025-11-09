@@ -70,6 +70,8 @@ sequenceDiagram
 
 ### Key Data Structures
 
+#### Core Neural Network Records
+
 ```erlang
 -record(sensor, {id, cortex_id, name, scape, vector_length, fanout_ids}).
 -record(actuator, {id, cortex_id, name, scape, vector_length, fanin_ids}).
@@ -77,7 +79,24 @@ sequenceDiagram
 -record(cortex, {id, sensor_ids, actuator_ids, neuron_ids}).
 ```
 
-**Note:** Sensors and actuators now include a `scape` field which specifies the environment (e.g., `{private, xor_sim}` for a private XOR simulator).
+**Note:** Sensors and actuators include a `scape` field which specifies the environment (e.g., `{private, xor_sim}` for a private XOR simulator).
+
+#### Evolutionary Algorithm Records (Future Support)
+
+```erlang
+-record(agent, {id, generation, population_id, specie_id, cortex_id, fingerprint,
+                constraint, evolution_history=[], fitness, innovation_factor=0, pattern=[]}).
+-record(specie, {id, population_id, fingerprint, constraint, agent_ids=[], dead_pool=[],
+                 champion_ids=[], fitness, innovation_factor=0}).
+-record(population, {id, platform_id, specie_ids=[], morphologies=[], innovation_factor}).
+-record(constraint, {morphology=xor_mimic, neural_afs=[tanh, cos, gauss, abs]}).
+```
+
+These records support evolutionary/genetic algorithm capabilities:
+- **agent**: Individual neural network in a population with evolutionary history
+- **specie**: Group of similar agents sharing a fingerprint
+- **population**: Collection of species being evolved
+- **constraint**: Evolutionary constraints (morphology type, available activation functions)
 
 ## Neural Network Mathematics
 
@@ -195,6 +214,23 @@ Actuators collect network outputs and interact with scapes:
 - **Actuator Types**:
   - `xor_SendOutput/2`: Sends output to XOR scape and gets fitness
   - `pts/2`: Prints result to screen (for debugging)
+
+### Platform (platform.erl)
+
+The Platform module is a gen_server that manages shared infrastructure:
+
+- **Scape Management**: Hosts public scapes that can be shared across multiple networks
+- **Module Supervision**: Starts and stops supervised modules
+- **Mnesia Integration**: Initializes and manages Mnesia database for evolutionary algorithms
+- **Database Schema**: Creates tables for populations, species, agents, and neural components
+- **Utility Functions**:
+  - `platform:sync()`: Recompiles all modules using `make:all([load])`
+  - `platform:create()`: Creates Mnesia schema and tables
+  - `platform:reset()`: Deletes and recreates Mnesia schema
+  - `platform:start()`: Starts the platform gen_server
+  - `platform:stop()`: Gracefully stops the platform
+
+**Note**: Currently configured with empty module and scape lists. Designed for future evolutionary algorithm support with persistent storage in Mnesia.
 
 ## Setup
 
