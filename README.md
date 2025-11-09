@@ -27,21 +27,28 @@ The system consists of several key modules:
 
 ```mermaid
 graph TD
-    T[Trainer] -->|Spawns| E[ExoSelf]
-    E -->|Creates| SC[Scapes]
+    P[Platform] -.->|Manages| PSC[Public Scapes]
+    P -.->|Mnesia| DB[(Database)]
+    B[Benchmarker] -->|Spawns| T[Trainer]
+    T -->|Spawns| E[ExoSelf]
+    E -->|Creates| SC[Private Scapes]
     E -->|Creates| C[Cortex]
     E -->|Creates| S[Sensors]
     E -->|Creates| N[Neurons]
     E -->|Creates| A[Actuators]
     C -->|Sync| S
     S -->|Percepts| SC
+    S -.->|Can use| PSC
     S -->|Forward| N
     N -->|Forward| A
     A -->|Actions| SC
+    A -.->|Can use| PSC
     SC -->|Fitness| A
+    PSC -.->|Fitness| A
     A -->|Sync| C
     C -->|Results| E
     E -->|Best Fitness| T
+    T -->|Statistics| B
 ```
 
 ### Message Flow (One Evaluation Cycle)
