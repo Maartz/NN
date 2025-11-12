@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.38.2">
+    <meta name="project" content="nn v1.0.0">
+
+
+    <title>CLAUDE.md — nn v1.0.0</title>
+
+    <link rel="stylesheet" href="dist/html-erlang-DQDXQC7W.css" />
+
+    <script defer src="dist/sidebar_items-40E37E96.js"></script>
+    <script defer src="docs_config.js"></script>
+    <script defer src="dist/html-DPJLHKSM.js"></script>
+
+  </head>
+  <body>
+    <script>(()=>{var t="ex_doc:settings",e="dark";var o="dark",s="light";var E="sidebar_state",n="closed";var r="sidebar_width";var a="sidebar-open";var i=new URLSearchParams(window.location.search),S=i.get("theme")||JSON.parse(localStorage.getItem(t)||"{}").theme;(S===o||S!==s&&window.matchMedia("(prefers-color-scheme: dark)").matches)&&document.body.classList.add(e);var d=sessionStorage.getItem(E),A=d!==n&&!window.matchMedia(`screen and (max-width: ${768}px)`).matches;document.body.classList.toggle(a,A);var c=sessionStorage.getItem(r);c&&document.body.style.setProperty("--sidebarWidth",`${c}px`);var p=/(Macintosh|iPhone|iPad|iPod)/.test(window.navigator.userAgent);document.documentElement.classList.toggle("apple-os",p);})();
+</script>
+
+<div class="body-wrapper">
+
+<button id="sidebar-menu" class="sidebar-button sidebar-toggle" aria-label="toggle sidebar" aria-controls="sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<nav id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    <div class="sidebar-projectInfo">
+
+      <div>
+        <a href="readme.html" class="sidebar-projectName" translate="no">
+nn
+        </a>
+        <div class="sidebar-projectVersion" translate="no">
+          v1.0.0
+        </div>
+      </div>
+    </div>
+    <ul id="sidebar-list-nav" class="sidebar-list-nav" role="tablist" data-extras=""></ul>
+  </div>
+</nav>
+
+<output role="status" id="toast"></output>
+
+<main class="content page-extra" id="main" data-type="extras">
+  <div id="content" class="content-inner">
+    <div class="top-search">
+      <div class="search-settings">
+        <form class="search-bar" action="search.html">
+          <label class="search-label">
+            <span class="sr-only">Search documentation of nn</span>
+            <input name="q" type="text" class="search-input" placeholder="Press / to search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          </label>
+          <button type="submit" class="search-button" aria-label="Submit Search" tabindex="-1">
+            <i class="ri-search-2-line ri-lg" aria-hidden="true"></i>
+          </button>
+          <button type="button" tabindex="-1" class="search-close-button" aria-hidden="true">
+            <i class="ri-close-line ri-lg" title="Cancel search"></i>
+          </button>
+        </form>
+        <div class="autocomplete">
+        </div>
+        <button class="icon-settings display-settings">
+          <i class="ri-settings-3-line"></i>
+          <span class="sr-only">Settings</span>
+        </button>
+      </div>
+    </div>
+
+<div id="top-content">
+  <div class="heading-with-actions top-heading">
+    <h1>CLAUDE.md</h1>
+
+
+      <a href="https://github.com/yourusername/NN/blob/v1.0.0/CLAUDE.md#L1" title="View Source" class="icon-action" rel="help">
+        <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+        <span class="sr-only">View Source</span>
+      </a>
+
+  </div>
+
+
+<p>This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.</p><h2 id="project-overview" class="section-heading"><a href="#project-overview" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Project Overview</span></h2><p>This is a Feed-Forward Neural Network (FFNN) implementation in Erlang/OTP using the actor model. Each component (neurons, sensors, actuators, cortex) runs as a separate concurrent process communicating via message passing.</p><h2 id="development-commands" class="section-heading"><a href="#development-commands" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Development Commands</span></h2><h3 id="compilation" class="section-heading"><a href="#compilation" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Compilation</span></h3><pre><code class="makeup erlang" translate="no"><span class="c1">% Compile all modules in Erlang shell</span><span class="w">
+</span><span class="nc">make</span><span class="p">:</span><span class="nf">all</span><span class="p" data-group-id="8121874808-1">(</span><span class="p" data-group-id="8121874808-2">[</span><span class="ss">load</span><span class="p" data-group-id="8121874808-2">]</span><span class="p" data-group-id="8121874808-1">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Or use platform module&#39;s sync command</span><span class="w">
+</span><span class="nc">platform</span><span class="p">:</span><span class="nf">sync</span><span class="p" data-group-id="8121874808-3">(</span><span class="p" data-group-id="8121874808-3">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Compile individual modules</span><span class="w">
+</span><span class="nf">c</span><span class="p" data-group-id="8121874808-4">(</span><span class="ss">module_name</span><span class="p" data-group-id="8121874808-4">)</span><span class="p">.</span></code></pre><h3 id="running-tests" class="section-heading"><a href="#running-tests" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Running Tests</span></h3><pre><code class="makeup erlang" translate="no"><span class="c1">% Basic test</span><span class="w">
+</span><span class="nc">test_nn</span><span class="p">:</span><span class="nf">test</span><span class="p" data-group-id="9786082840-1">(</span><span class="p" data-group-id="9786082840-1">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Create and run a network</span><span class="w">
+</span><span class="nc">genotype</span><span class="p">:</span><span class="nf">construct</span><span class="p" data-group-id="9786082840-2">(</span><span class="ss">test_nn_genotype</span><span class="p">,</span><span class="w"> </span><span class="ss">xor_mimic</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="9786082840-3">[</span><span class="mi">2</span><span class="p" data-group-id="9786082840-3">]</span><span class="p" data-group-id="9786082840-2">)</span><span class="p">.</span><span class="w">
+</span><span class="nc">exoself</span><span class="p">:</span><span class="nf">map</span><span class="p" data-group-id="9786082840-4">(</span><span class="ss">test_nn_genotype</span><span class="p" data-group-id="9786082840-4">)</span><span class="p">.</span></code></pre><h3 id="training" class="section-heading"><a href="#training" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Training</span></h3><pre><code class="makeup erlang" translate="no"><span class="c1">% Basic training with defaults (5 attempts, inf eval limit, inf fitness target)</span><span class="w">
+</span><span class="nc">trainer</span><span class="p">:</span><span class="nf">go</span><span class="p" data-group-id="5319415298-1">(</span><span class="ss">xor_mimic</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="5319415298-2">[</span><span class="mi">2</span><span class="p" data-group-id="5319415298-2">]</span><span class="p" data-group-id="5319415298-1">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Training with custom parameters</span><span class="w">
+</span><span class="nc">trainer</span><span class="p">:</span><span class="nf">go</span><span class="p" data-group-id="5319415298-3">(</span><span class="n">Morphology</span><span class="p">,</span><span class="w"> </span><span class="n">HiddenLayerDensities</span><span class="p">,</span><span class="w"> </span><span class="n">MaxAttempts</span><span class="p">,</span><span class="w"> </span><span class="n">EvalLimit</span><span class="p">,</span><span class="w"> </span><span class="n">FitnessTarget</span><span class="p" data-group-id="5319415298-3">)</span><span class="p">.</span></code></pre><h3 id="benchmarking" class="section-heading"><a href="#benchmarking" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Benchmarking</span></h3><pre><code class="makeup erlang" translate="no"><span class="c1">% Run 100 benchmark iterations (default)</span><span class="w">
+</span><span class="nc">benchmarker</span><span class="p">:</span><span class="nf">go</span><span class="p" data-group-id="7364185754-1">(</span><span class="ss">xor_mimic</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="7364185754-2">[</span><span class="mi">2</span><span class="p" data-group-id="7364185754-2">]</span><span class="p" data-group-id="7364185754-1">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Custom benchmark runs</span><span class="w">
+</span><span class="nc">benchmarker</span><span class="p">:</span><span class="nf">go</span><span class="p" data-group-id="7364185754-3">(</span><span class="n">Morphology</span><span class="p">,</span><span class="w"> </span><span class="n">HiddenLayerDensities</span><span class="p">,</span><span class="w"> </span><span class="n">TotRuns</span><span class="p" data-group-id="7364185754-3">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Full control</span><span class="w">
+</span><span class="nc">benchmarker</span><span class="p">:</span><span class="nf">go</span><span class="p" data-group-id="7364185754-4">(</span><span class="n">Morphology</span><span class="p">,</span><span class="w"> </span><span class="n">HiddenLayerDensities</span><span class="p">,</span><span class="w"> </span><span class="n">MaxAttempts</span><span class="p">,</span><span class="w"> </span><span class="n">EvalLimit</span><span class="p">,</span><span class="w"> </span><span class="n">FitnessTarget</span><span class="p">,</span><span class="w"> </span><span class="n">TotRuns</span><span class="p" data-group-id="7364185754-4">)</span><span class="p">.</span></code></pre><h3 id="genotype-inspection" class="section-heading"><a href="#genotype-inspection" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Genotype Inspection</span></h3><pre><code class="makeup erlang" translate="no"><span class="c1">% Print genotype structure</span><span class="w">
+</span><span class="nc">genotype</span><span class="p">:</span><span class="nf">print</span><span class="p" data-group-id="1683774820-1">(</span><span class="n">FileName</span><span class="p" data-group-id="1683774820-1">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Load genotype from file</span><span class="w">
+</span><span class="n">Genotype</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">genotype</span><span class="p">:</span><span class="nf">load_from_file</span><span class="p" data-group-id="1683774820-2">(</span><span class="n">FileName</span><span class="p" data-group-id="1683774820-2">)</span><span class="p">.</span><span class="w">
+
+</span><span class="c1">% Read specific element</span><span class="w">
+</span><span class="n">Element</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nc">genotype</span><span class="p">:</span><span class="nf">read</span><span class="p" data-group-id="1683774820-3">(</span><span class="n">Genotype</span><span class="p">,</span><span class="w"> </span><span class="n">ElementId</span><span class="p" data-group-id="1683774820-3">)</span><span class="p">.</span></code></pre><h2 id="architecture" class="section-heading"><a href="#architecture" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Architecture</span></h2><h3 id="process-hierarchy" class="section-heading"><a href="#process-hierarchy" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Process Hierarchy</span></h3><p>The system follows a strict hierarchical process model:</p><ol><li><p><strong>ExoSelf</strong> (exoself.erl): Top-level orchestrator</p><ul><li>Creates and manages the entire neural network phenotype</li><li>Spawns all processes (cortex, sensors, neurons, actuators, scapes)</li><li>Handles training loop with perturbation-based learning</li><li>Backs up genotype after training</li><li>Communicates results to trainer process</li></ul></li><li><p><strong>Cortex</strong> (cortex.erl): Network coordinator</p><ul><li>Synchronizes sensor-neuron-actuator cycles</li><li>Manages evaluation cycles</li><li>Reports fitness back to ExoSelf</li></ul></li><li><p><strong>Scape</strong> (scape.erl): Environment simulation</p><ul><li>Provides training environments (e.g., xor_sim)</li><li>Supplies input data and validates outputs</li><li>Calculates fitness scores</li></ul></li><li><p><strong>Sensors</strong> (sensor.erl): Input layer</p><ul><li>Request percepts from scapes</li><li>Forward input vectors to first layer neurons</li><li>Defined by morphology</li></ul></li><li><p><strong>Neurons</strong> (neuron.erl): Processing units</p><ul><li>Compute weighted sum (dot product) of inputs</li><li>Apply activation function (tanh)</li><li>Forward results to output neurons/actuators</li><li>Support weight perturbation, backup, and restore</li></ul></li><li><p><strong>Actuators</strong> (actuator.erl): Output layer</p><ul><li>Collect outputs from final neuron layer</li><li>Send actions to scapes</li><li>Receive fitness feedback</li></ul></li></ol><h3 id="data-flow" class="section-heading"><a href="#data-flow" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Data Flow</span></h3><pre><code class="makeup erlang" translate="no"><span class="n">Scape</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">Sensor</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">Neuron</span><span class="w"> </span><span class="n">Layer</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">.</span><span class="p">.</span><span class="p">.</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">Neuron</span><span class="w"> </span><span class="n">Layer</span><span class="w"> </span><span class="n">N</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">Actuator</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">Scape</span><span class="w">
+                                                                        </span><span class="err">↓</span><span class="w">
+                                                                    </span><span class="n">Fitness</span><span class="w">
+                                                                        </span><span class="err">↓</span><span class="w">
+                                                            </span><span class="n">Cortex</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="n">ExoSelf</span></code></pre><h3 id="learning-algorithm" class="section-heading"><a href="#learning-algorithm" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Learning Algorithm</span></h3><p>The system uses a simple perturbation-based learning approach:</p><ul><li>After each evaluation, randomly perturb weights of subset of neurons (probability = 1/sqrt(total_neurons))</li><li>If fitness improves: backup new weights, reset attempt counter</li><li>If fitness degrades: restore previous weights, increment attempt counter</li><li>Training terminates after MAX_ATTEMPTS (default: 50) consecutive failed attempts</li></ul><h3 id="key-data-structures-records-hrl" class="section-heading"><a href="#key-data-structures-records-hrl" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Key Data Structures (records.hrl)</span></h3><pre><code class="makeup erlang" translate="no"><span class="p">-</span><span class="na">record</span><span class="p" data-group-id="1562789110-1">(</span><span class="ss">sensor</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1562789110-2">{</span><span class="ss">id</span><span class="p">,</span><span class="w"> </span><span class="ss">cortex_id</span><span class="p">,</span><span class="w"> </span><span class="ss">name</span><span class="p">,</span><span class="w"> </span><span class="ss">scape</span><span class="p">,</span><span class="w"> </span><span class="ss">vector_length</span><span class="p">,</span><span class="w"> </span><span class="ss">fanout_ids</span><span class="p" data-group-id="1562789110-2">}</span><span class="p" data-group-id="1562789110-1">)</span><span class="p">.</span><span class="w">
+</span><span class="p">-</span><span class="na">record</span><span class="p" data-group-id="1562789110-3">(</span><span class="ss">actuator</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1562789110-4">{</span><span class="ss">id</span><span class="p">,</span><span class="w"> </span><span class="ss">cortex_id</span><span class="p">,</span><span class="w"> </span><span class="ss">name</span><span class="p">,</span><span class="w"> </span><span class="ss">scape</span><span class="p">,</span><span class="w"> </span><span class="ss">vector_length</span><span class="p">,</span><span class="w"> </span><span class="ss">fanin_ids</span><span class="p" data-group-id="1562789110-4">}</span><span class="p" data-group-id="1562789110-3">)</span><span class="p">.</span><span class="w">
+</span><span class="p">-</span><span class="na">record</span><span class="p" data-group-id="1562789110-5">(</span><span class="ss">neuron</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1562789110-6">{</span><span class="ss">id</span><span class="p">,</span><span class="w"> </span><span class="ss">cortex_id</span><span class="p">,</span><span class="w"> </span><span class="ss">activation_function</span><span class="p">,</span><span class="w"> </span><span class="ss">input_ids</span><span class="p">,</span><span class="w"> </span><span class="ss">output_ids</span><span class="p" data-group-id="1562789110-6">}</span><span class="p" data-group-id="1562789110-5">)</span><span class="p">.</span><span class="w">
+</span><span class="p">-</span><span class="na">record</span><span class="p" data-group-id="1562789110-7">(</span><span class="ss">cortex</span><span class="p">,</span><span class="w"> </span><span class="p" data-group-id="1562789110-8">{</span><span class="ss">id</span><span class="p">,</span><span class="w"> </span><span class="ss">sensor_ids</span><span class="p">,</span><span class="w"> </span><span class="ss">actuator_ids</span><span class="p">,</span><span class="w"> </span><span class="ss">neuron_ids</span><span class="p" data-group-id="1562789110-8">}</span><span class="p" data-group-id="1562789110-7">)</span><span class="p">.</span></code></pre><h3 id="genotype-vs-phenotype" class="section-heading"><a href="#genotype-vs-phenotype" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Genotype vs Phenotype</span></h3><ul><li><p><strong>Genotype</strong>: Network specification stored in ETS tables and files (genotype.erl)</p><ul><li>Defines structure, weights, connections</li><li>Persisted to disk as ETS table files</li><li>Modified by constructor and updated after training</li></ul></li><li><p><strong>Phenotype</strong>: Running network of concurrent processes (exoself.erl)</p><ul><li>Spawned from genotype specification</li><li>Processes communicate via message passing</li><li>Terminated after training; weights saved back to genotype</li></ul></li></ul><h3 id="morphology-system" class="section-heading"><a href="#morphology-system" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Morphology System</span></h3><p>Morphologies (morphology.erl) define sensor/actuator configurations for different problem domains:</p><ul><li><strong>xor_mimic</strong>: XOR problem with 2-input sensor and 1-output actuator</li><li>Each morphology specifies its sensors and actuators with appropriate vector lengths</li><li>Scapes can be private (spawned per network) or public (shared)</li></ul><h3 id="important-implementation-details" class="section-heading"><a href="#important-implementation-details" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Important Implementation Details</span></h3><ol><li><p><strong>Process Spawning</strong>: All cerebral units (cortex, sensors, neurons, actuators) and scapes spawn via their respective <code class="inline">gen/2</code> functions which call <code class="inline">prep/1</code> to initialize</p></li><li><p><strong>IdsNPIds Mapping</strong>: ExoSelf maintains ETS table mapping IDs ↔ PIDs for all components</p></li><li><p><strong>Weight Management</strong>: Neurons store current weights and backup weights, supporting perturbation/restore operations</p></li><li><p><strong>Trainer/Benchmarker</strong>: These are separate registered processes that spawn ExoSelf instances and collect results</p></li><li><p><strong>File Naming</strong>: Training/benchmarking generate unique filenames (experimental<em>{unique_int}, best</em>{unique_int}) to avoid conflicts</p></li></ol><h2 id="common-patterns" class="section-heading"><a href="#common-patterns" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Common Patterns</span></h2><h3 id="creating-a-new-morphology" class="section-heading"><a href="#creating-a-new-morphology" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Creating a New Morphology</span></h3><ol><li>Add morphology function in morphology.erl with sensors/actuators clauses</li><li>Implement corresponding scape in scape.erl</li><li>Define sensor/actuator functions matching the scape protocol</li></ol><h3 id="debugging-network-execution" class="section-heading"><a href="#debugging-network-execution" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Debugging Network Execution</span></h3><ul><li>ExoSelf and Cortex print status messages during execution</li><li>Use <code class="inline">io:format</code> statements to trace message flow</li><li>Monitor process with <code class="inline">monitor(process, Pid)</code></li><li>Check that all processes properly handle termination messages</li></ul><h3 id="adding-new-activation-functions" class="section-heading"><a href="#adding-new-activation-functions" class="hover-link"><i class="ri-link-m" aria-hidden="true"></i></a><span class="text">Adding New Activation Functions</span></h3><p>Modify neuron.erl to support additional activation functions beyond tanh (referenced in neuron records)</p>
+
+</div>
+
+<div class="bottom-actions" id="bottom-actions">
+  <div class="bottom-actions-item">
+
+      <a href="readme.html" class="bottom-actions-button" rel="prev">
+        <span class="subheader">
+          ← Previous Page
+        </span>
+        <span class="title">
+Feed-Forward Neural Network in Erlang/OTP
+        </span>
+      </a>
+
+  </div>
+  <div class="bottom-actions-item">
+
+  </div>
+</div>
+    <footer class="footer">
+      <p>
+
+          <span class="line">
+            <a href="https://hex.pm/packages/nn/1.0.0" class="footer-hex-package">Hex Package</a>
+
+            <a href="https://preview.hex.pm/preview/nn/1.0.0">Hex Preview</a>
+
+              (<a href="https://preview.hex.pm/preview/nn/1.0.0/show/CLAUDE.md">current file</a>)
+
+          </span>
+
+        <span class="line">
+          <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+            Search HexDocs
+          </button>
+
+            <a href="nn.epub" title="ePub version">
+              Download ePub version
+            </a>
+
+        </span>
+      </p>
+
+      <p class="built-using">
+        Built using
+        <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.38.2) for the
+
+          <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+      </p>
+
+    </footer>
+  </div>
+</main>
+</div>
+
+  </body>
+</html>

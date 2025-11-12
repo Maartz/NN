@@ -1,0 +1,10 @@
+{application, nn, [
+    {description, "Feed-Forward Neural Network with Actor Model"},
+    {vsn, "1.0.0"},
+    {registered, [platform, trainer, benchmarker]},
+    {applications, [kernel, stdlib, mnesia]},
+    {env, []},
+    {modules, []},
+    {licenses, ["MIT"]},
+    {links, []}
+]}.

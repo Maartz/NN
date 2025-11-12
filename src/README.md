@@ -275,12 +275,12 @@ The documentation includes:
 - **Interactive search** and navigation
 - **Mermaid diagrams** for architecture visualization
 
-## Getting Started
+## Setup
 
 ### Prerequisites
 
-- **Erlang/OTP 26+** - Required for running the neural network
-- **Rebar3** - Build tool and dependency manager
+- **Erlang/OTP 26+** - Required for EEP-48 documentation chunks
+- **Rebar3** - Build tool and dependency manager (optional but recommended)
 
 ### Installation
 
@@ -289,66 +289,64 @@ The documentation includes:
 git clone https://github.com/yourusername/NN.git
 cd NN
 
-# Compile the project
+# Using rebar3 (recommended)
 rebar3 compile
+rebar3 ex_doc  # Generate documentation
 
-# Generate documentation (optional)
-rebar3 ex_doc
+# Or using Erlang shell directly
+erl
+1> make:all([load]).
+2> platform:start().
 ```
 
-### Quick Start
-
-```bash
-# Start an Erlang shell with the compiled project
-rebar3 shell
-```
+### Compilation Options
 
 ```erlang
-% Create a neural network for XOR problem with 3 hidden neurons
-1> genotype:construct(my_network, xor_mimic, [3]).
+% Compile all modules at once
+make:all([load]).
 
-% Train the network (runs until convergence or max attempts)
-2> exoself:map(my_network).
+% Or use platform sync (recompiles and reloads)
+platform:sync().
 
-% The trained network is automatically saved to 'my_network' file
+% Or compile individual modules
+c(genotype).
+c(morphology).
+c(neuron).
 ```
 
 ## Usage
 
-### Creating a Network
-
-Create a network genotype (blueprint) with custom topology:
+### Creating a Network Genotype
 
 ```erlang
-% Basic: One hidden layer with 3 neurons
-genotype:construct(my_network, xor_mimic, [3]).
+% Create XOR network with one hidden layer of 2 neurons
+genotype:construct(test_nn_genotype, xor_mimic, [2]).
 
-% Advanced: Two hidden layers with 5 and 3 neurons
-genotype:construct(deep_network, xor_mimic, [5, 3]).
+% Create with multiple hidden layers
+genotype:construct(my_network, xor_mimic, [3, 2]).
 ```
 
-**Parameters:**
-- `my_network` - Filename for saving the genotype
-- `xor_mimic` - Morphology (problem domain configuration)
-- `[3]` or `[5, 3]` - Hidden layer sizes (number of neurons per layer)
+Parameters:
 
-### Training a Network
+- `test_nn_genotype` - Genotype file name (will be saved as ETS table)
+- `xor_mimic` - Morphology (defines sensors/actuators for XOR problem)
+- `[2]` - Hidden layer configuration (one hidden layer with 2 neurons)
 
-#### Simple Training (Single Run)
+### Running a Network (Single Evaluation)
 
 ```erlang
-% Create and train in one go
-exoself:map(my_network).
+% Map genotype to phenotype and run until completion
+PId = exoself:map(test_nn_genotype).
 ```
 
-**What happens:**
-1. Loads genotype from file
-2. Spawns all neural processes (cortex, sensors, neurons, actuators, scapes)
-3. Runs perturbation-based training (up to 50 attempts)
-4. Saves improved weights back to genotype file
-5. Prints final fitness and statistics
+This will:
+1. Load the genotype from file
+2. Spawn all processes (cortex, sensors, neurons, actuators, scapes)
+3. Run training for up to 50 attempts
+4. Save improved weights back to genotype
+5. Print final results
 
-#### Advanced Training with Trainer
+### Training with the Trainer
 
 ```erlang
 % Basic training (5 attempts, infinite eval limit, infinite fitness target)
@@ -385,46 +383,6 @@ Benchmark output includes:
 - Evaluations: Max, Min, Avg, Std
 - Cycles: Max, Min, Avg, Std
 - Time: Max, Min, Avg, Std
-
-## Development Commands
-
-### Building and Testing
-
-```bash
-# Compile the project
-rebar3 compile
-
-# Start interactive shell with compiled modules
-rebar3 shell
-
-# Clean build artifacts
-rebar3 clean
-
-# Generate documentation
-rebar3 ex_doc
-
-# Open documentation in browser (macOS)
-open doc/readme.html
-```
-
-### Alternative: Manual Compilation (without rebar3)
-
-If you prefer to work directly in the Erlang shell:
-
-```erlang
-% Start Erlang shell
-erl
-
-% Compile all modules
-1> make:all([load]).
-
-% Or compile individual modules
-2> c(genotype).
-3> c(neuron).
-
-% Recompile changed modules (via platform)
-4> platform:sync().
-```
 
 ## Network Flow
 
