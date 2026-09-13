@@ -1,755 +1,307 @@
-# Feed-Forward Neural Network in Erlang/OTP
+# NN — apprendre la neuroévolution en Erlang
 
-[![Erlang/OTP](https://img.shields.io/badge/Erlang%2FOTP-26%2B-red.svg)](https://www.erlang.org/)
-[![Documentation](https://img.shields.io/badge/docs-ExDoc-blue.svg)](doc/readme.html)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+Une base expérimentale pour suivre *Handbook of Neuroevolution Through Erlang*
+de Gene I. Sher : comprendre un réseau, ajuster ses poids, observer ses décisions,
+puis construire progressivement un système qui fait évoluer sa structure.
 
-> A concurrent, message-passing based neural network implementation using Erlang's actor model
+Le projet reste en **Erlang** : petites fonctions, clauses, récursion terminale,
+compréhensions de listes et passage de messages. Chaque processus porte une
+responsabilité limitée ; les protocoles et les transitions d'état relient le tout.
 
-## Start here: a small life simulation
+**Pour reprendre dans le train : [atelier hors ligne](docs/TRAIN.md).**
+Pour comprendre la simulation : [Petite vie, le fil à suivre](docs/LIFE.md).
+Les commentaires `ATELIER` dans les sources indiquent les points à explorer.
 
-An observable companion to the book is now available: a creature seeks food
-in a grid. Compare a programmed controller, an initial neural network, a
-population evolved for 40 generations, and the real ExoSelf actor network.
-Both learning methods share initial weights and an evaluation budget. The
-simulation runs in Erlang and exports a standalone browser replay.
+## Sommaire
+
+- [Démarrer](#démarrer)
+- [Ce qui fonctionne aujourd'hui](#ce-qui-fonctionne-aujourdhui)
+- [Entraîner depuis le shell](#entraîner-depuis-le-shell)
+- [Comprendre le moteur](#comprendre-le-moteur)
+- [Lire et modifier le code](#lire-et-modifier-le-code)
+- [Vérifier les résultats](#vérifier-les-résultats)
+- [La suite du projet](#la-suite-du-projet)
+
+## Démarrer
+
+Prérequis : **Erlang/OTP 26 ou ultérieur**, **rebar3**, un shell et un navigateur.
+La validation actuelle a été exécutée avec OTP 26. Le calcul utilise les modules
+Erlang du dépôt ; l'interface est en HTML/CSS/JavaScript, sans compilation Node.js.
+Aucun compte, clé API ou variable d'environnement n'est nécessaire.
+
+Ces travaux sont sur la branche `codex/life-simulation` :
 
 ```sh
+git clone --branch codex/life-simulation https://github.com/Maartz/NN.git
+cd NN
+rebar3 compile
+rebar3 eunit
 ./scripts/life.sh
+```
+
+Ouvrir ensuite `_build/life/index.html` dans un navigateur. Sur macOS :
+
+```sh
 open _build/life/index.html
 ```
 
-**[Read the short French walkthrough](docs/LIFE.md)** for the rules,
-the ExoSelf connection, modules to read in order, and measured results. This is a fixed-topology
-weight-evolution experiment; the learned controller still falls short of the
-programmed baseline. Run `rebar3 eunit` to verify this and the existing XOR path.
+La page démarre sur **ExoSelf** et propose quatre comportements : une règle
+programmée, le réseau initial, une population simplifiée et le réseau entraîné
+par ExoSelf. On peut avancer d'un pas, lire un épisode, changer de monde et
+inspecter les perceptions et les quatre scores de direction.
 
-**[Offline ExoSelf workshop (French)](docs/TRAIN.md)**: commented source map,
-copyable commands, equal-budget restart comparison, and instrumentation exercises.
+**Le navigateur rejoue des épisodes calculés en Erlang.** Il n'entraîne pas le
+réseau en direct. Relancer le script régénère et remplace les résultats.
+Pour conserver plusieurs expériences, choisir un autre dossier :
 
-## Overview
-
-This project implements a **Feed-Forward Neural Network (FFNN)** using Erlang/OTP's actor model with a **perturbation-based learning algorithm**. Each component of the neural network (neurons, sensors, actuators, cortex, and scapes) is implemented as a separate concurrent process, allowing for **parallel execution** and **message-passing based communication**.
-
-### Key Features
-
-- 🧠 **Actor-based architecture** - Each neuron, sensor, and actuator runs as an independent process
-- ⚡ **Concurrent execution** - Natural parallelism through Erlang's process model
-- 🔄 **Perturbation learning** - Evolutionary-style weight optimization without backpropagation
-- 📊 **Built-in benchmarking** - Statistical analysis across multiple training runs
-- 💾 **Persistent genotypes** - Save and load trained networks via Mnesia/ETS
-- 📚 **Complete documentation** - ExDoc-generated API documentation with examples
-
-## Architecture
-
-### System Components
-
-The system consists of several key modules:
-
-1. `exoself.erl` - Orchestrates the network creation, lifecycle, and training loop
-2. `genotype.erl` - Generates and persists network structure and weights
-3. `morphology.erl` - Defines problem-specific sensor/actuator configurations
-4. `scape.erl` - Implements environment simulations (e.g., XOR problem)
-5. `sensor.erl` - Handles input generation from scapes
-6. `neuron.erl` - Implements neuron behavior with weight management
-7. `actuator.erl` - Manages output processing and fitness collection
-8. `cortex.erl` - Orchestrates synchronous network operation cycles
-9. `trainer.erl` - Manages training sessions with fitness tracking
-10. `benchmarker.erl` - Runs statistical benchmarks across multiple training runs
-11. `platform.erl` - Gen_server for managing shared scapes and modules
-12. `records.hrl` - Defines data structures
-
-### Process Hierarchy
-
-```mermaid
-graph TD
-    P[Platform] -.->|Manages| PSC[Public Scapes]
-    P -.->|Mnesia| DB[(Database)]
-    B[Benchmarker] -->|Spawns| T[Trainer]
-    T -->|Spawns| E[ExoSelf]
-    E -->|Creates| SC[Private Scapes]
-    E -->|Creates| C[Cortex]
-    E -->|Creates| S[Sensors]
-    E -->|Creates| N[Neurons]
-    E -->|Creates| A[Actuators]
-    C -->|Sync| S
-    S -->|Percepts| SC
-    S -.->|Can use| PSC
-    S -->|Forward| N
-    N -->|Forward| A
-    A -->|Actions| SC
-    A -.->|Can use| PSC
-    SC -->|Fitness| A
-    PSC -.->|Fitness| A
-    A -->|Sync| C
-    C -->|Results| E
-    E -->|Best Fitness| T
-    T -->|Statistics| B
+```sh
+./scripts/life.sh _build/life-autre/index.html
 ```
 
-### Message Flow (One Evaluation Cycle)
+### Travailler hors ligne et partager le replay
 
-```mermaid
-sequenceDiagram
-    participant E as ExoSelf
-    participant C as Cortex
-    participant S as Sensor
-    participant SC as Scape
-    participant N as Neuron
-    participant A as Actuator
+Exécuter `rebar3 compile` une fois avec une connexion pour préparer les outils
+locaux, notamment le plugin ExDoc. La page générée est autonome : ses données
+sont intégrées et elle fonctionne sans serveur ni connexion. On peut partager
+ce fichier HTML seul. Il n'y a pas de service applicatif à déployer.
 
-    E->>C: Send PIDs & IDs
-    C->>S: {sync}
-    S->>SC: {sense}
-    SC->>S: {percept, Input}
-    S->>N: {forward, Input}
-    N->>N: Compute: tanh(dot(Input, Weights))
-    N->>A: {forward, Output}
-    A->>SC: {action, Output}
-    SC->>A: {Fitness, HaltFlag}
-    A->>C: {sync, Fitness, HaltFlag}
-    C->>E: {evaluation_completed, Fitness, Cycles, Time}
+Un serveur local est facultatif, par exemple avec Python 3 :
+
+```sh
+python3 -m http.server 8765 --bind 127.0.0.1 --directory _build/life
 ```
 
-### Key Data Structures
+Ouvrir alors [la page locale](http://127.0.0.1:8765/). Pour les expériences au
+shell hors ligne, après compilation :
 
-#### Core Neural Network Records
+```sh
+erl -pa _build/default/lib/nn/ebin
+```
+
+## Ce qui fonctionne aujourd'hui
+
+| Élément | État |
+|---|---|
+| Réseau à processus : capteurs, neurones, actionneurs, cortex | Fonctionnel sur les scénarios testés |
+| ExoSelf : perturbation, sauvegarde, restauration et limites d'entraînement | Fonctionnel, avec graines reproductibles |
+| XOR | Apprentissage et rechargement vérifiés par les tests |
+| Petite vie | Même monde pour les quatre comportements, épisodes ExoSelf enregistrés avec les vrais acteurs |
+| Persistance des réseaux autonomes | Fichiers ETS ; aucun démarrage de `platform` ni schéma Mnesia à préparer |
+| Population simplifiée de la démo | Sélection et mutation de poids, architecture fixe, calcul direct par fonctions |
+| Évolution de topologie du livre | À construire : `genome_mutator:mutate/1` renvoie `{aborted, not_implemented}` |
+| `population_monitor` | Absent ; les records de population et certaines fonctions Mnesia sont préparatoires |
+| Compteurs détaillés et comparaison des redémarrages | Commandes et exercice dans [l'atelier](docs/TRAIN.md), pas un nouveau mode de la page |
+
+La démo utilise **7 entrées → 6 neurones cachés → 4 sorties**, avec `tanh`, soit
+76 coefficients en comptant les biais. L'entraînement ne change pas cette structure.
+Les perceptions indiquent notamment la direction de la nourriture la plus proche.
+
+Avec les paramètres par défaut, chaque méthode reçoit **1 312 évaluations**,
+chacune sur les mondes d'entraînement 11, 22 et 33. Le choix du meilleur parmi
+32 réseaux initiaux est commun et compté dans les deux budgets. Les mondes
+101, 202 et 303 servent ensuite à la validation. Le budget égalise les évaluations,
+pas le temps de calcul. Le [guide](docs/LIFE.md) détaille ce protocole.
+
+### Fichiers produits par la démo
+
+| Sous `_build/life/` | Contenu |
+|---|---|
+| `index.html` | Interface et données intégrées, douze épisodes |
+| `experiment.json` | Paramètres, réseaux, historiques et épisodes |
+| `champion.term` | Champion de la population simplifiée, lisible avec `file:consult/1` |
+| `exoself.ets` | Génotype entraîné par ExoSelf, lisible avec `life_exoself:load/1` |
+
+## Entraîner depuis le shell
+
+Depuis la racine du dépôt, lancer `rebar3 shell` ou le shell `erl -pa ...`
+indiqué plus haut. Copier les expressions suivantes sans ajouter de numéros
+de prompt ; chaque expression se termine par un point.
+
+### Un réseau pour Petite vie
 
 ```erlang
--record(sensor, {id, cortex_id, name, scape, vector_length, fanout_ids}).
--record(actuator, {id, cortex_id, name, scape, vector_length, fanin_ids}).
--record(neuron, {id, cortex_id, activation_function, input_ids, output_ids}).
--record(cortex, {id, sensor_ids, actuator_ids, neuron_ids}).
+LifeFile = "_build/readme/life.ets".
+ok = filelib:ensure_dir(LifeFile).
+genotype:construct(LifeFile, life_mimic, [6], #{seed => 42}).
+LifeResult = life_exoself:train(LifeFile,
+    #{seed => 1042, evaluation_limit => 1000, max_attempts => 1000}).
+maps:with([score, evaluations, cycles], LifeResult).
+LifeEpisode = life_exoself:episode(LifeFile, 3001).
+maps:with([eaten, steps, status], LifeEpisode).
 ```
 
-**Note:** Sensors and actuators include a `scape` field which specifies the environment (e.g., `{private, xor_sim}` for a private XOR simulator).
+`construct/4` crée les poids initiaux et écrit le fichier, en remplaçant celui
+qui existe au même chemin. `train/2` attend la fin d'ExoSelf et sauvegarde les
+meilleurs poids. Le rappeler sur ce fichier poursuit depuis ces poids ; changer
+sa graine ne constitue pas un nouveau départ. `episode/2` rejoue sans mutation.
+La graine `3001` désigne ici un monde, pas les perturbations.
 
-#### Evolutionary Algorithm Records (Future Support)
+### XOR avec l'API asynchrone d'ExoSelf
 
 ```erlang
--record(agent, {id, generation, population_id, specie_id, cortex_id, fingerprint,
-                constraint, evolution_history=[], fitness, innovation_factor=0, pattern=[]}).
--record(specie, {id, population_id, fingerprint, constraint, agent_ids=[], dead_pool=[],
-                 champion_ids=[], fitness, innovation_factor=0}).
--record(population, {id, platform_id, specie_ids=[], morphologies=[], innovation_factor}).
--record(constraint, {morphology=xor_mimic, neural_afs=[tanh, cos, gauss, abs]}).
-```
-
-These records support evolutionary/genetic algorithm capabilities:
-- **agent**: Individual neural network in a population with evolutionary history
-- **specie**: Group of similar agents sharing a fingerprint
-- **population**: Collection of species being evolved
-- **constraint**: Evolutionary constraints (morphology type, available activation functions)
-
-## Neural Network Mathematics
-
-### Dot Product
-
-The dot product is used in neurons to compute the weighted sum of inputs:
-
-```erlang
-dot([I | Input], [W | Weights], Acc) ->
-    dot(Input, Weights, I * W + Acc);
-dot([], [], Acc) ->
-    Acc.
-```
-
-This operation:
-
-- Multiplies each input by its corresponding weight
-- Sums all products
-- Determines neuron activation strength
-
-### Activation Function (tanh)
-
-The network uses hyperbolic tangent (tanh) as its activation function:
-
-```erlang
-tanh(Val) ->
-    math:tanh(Val).
-```
-
-Key properties:
-
-- Bounds output between -1 and 1
-- Non-linear transformation
-- Smooth gradient
-- Zero-centered output
-
-Benefits for neural networks:
-
-1. Prevents numerical overflow
-2. Allows for negative outputs
-3. Strong gradients near zero
-4. Smooth activation curves
-
-## Detailed Component Descriptions
-
-### ExoSelf (exoself.erl)
-
-The ExoSelf process is the top-level orchestrator responsible for:
-
-1. **Genotype Loading**: Reads network configuration from ETS table files
-2. **Process Spawning**: Creates all cerebral units (cortex, sensors, neurons, actuators) and scapes
-3. **Connection Mapping**: Establishes IdsNPIds ETS table mapping element IDs to PIDs
-4. **Process Linking**: Sends initialization messages with connection information
-5. **Training Loop**: Implements perturbation-based learning:
-   - Perturbs random subset of neuron weights (probability = 1/sqrt(total_neurons))
-   - Backs up weights when fitness improves
-   - Restores weights when fitness degrades
-   - Terminates after MAX_ATTEMPTS (50) consecutive failures
-6. **Genotype Persistence**: Saves trained weights back to genotype file
-7. **Result Reporting**: Communicates final fitness/statistics to trainer process
-
-### Cortex (cortex.erl)
-
-The Cortex orchestrates the synchronous operation of the neural network:
-
-- **Cycle Management**: Triggers sensors to begin each evaluation cycle
-- **Synchronization**: Collects sync messages from all actuators before starting next cycle
-- **Fitness Accumulation**: Aggregates fitness scores from actuators
-- **Evaluation Completion**: Detects end of evaluation (via EndFlag) and reports to ExoSelf
-- **State Transitions**: Switches between active (running) and inactive (waiting for reactivation) states
-- **Timing**: Tracks cycle count and execution time for performance metrics
-
-### Scapes (scape.erl)
-
-Scapes implement the problem environments:
-
-- **XOR Simulator** (`xor_sim/1`): Provides XOR training data
-  - Cycles through 4 XOR cases: `[{[-1,-1],[-1]}, {[1,-1],[1]}, {[-1,1],[1]}, {[1,1],[-1]}]`
-  - Accumulates the Euclidean output error for each of the four cases
-  - Returns fitness as `1/(sqrt(sum(case_errors)) + 0.00001)`
-  - For scalar XOR outputs, `case_errors` are absolute errors; this legacy metric is not MSE or RMSE
-- **Protocol**: Responds to `{sense}` messages with percepts, receives `{action, Output}` messages
-- **Scope**: Can be private (spawned per network) or public (shared across networks)
-
-### Sensors (sensor.erl)
-
-Sensors generate or retrieve input data:
-
-- **Scape Communication**: Sends `{sense}` message and receives `{percept, Vector}` response
-- **Data Forwarding**: Broadcasts sensory vector to all connected neurons (fanout)
-- **Sensor Types**:
-  - `xor_GetInput/2`: Retrieves input from XOR scape
-  - `rng/1`: Generates random numbers (for testing)
-- **Synchronization**: Triggered by cortex `{sync}` messages
-
-### Neurons (neuron.erl)
-
-Neurons perform the core neural computation:
-
-- **Weighted Sum**: Computes dot product of inputs and weights
-- **Activation**: Applies tanh activation function
-- **Weight Management**:
-  - `weight_backup`: Stores current weights in process dictionary
-  - `weight_restore`: Reverts to backed up weights
-  - `weight_perturb`: Randomly perturbs weights (probability = 1/sqrt(total_weights))
-- **Saturation**: Limits weight values to ±2π range
-- **Delta Multiplier**: Uses 2π for perturbation magnitude
-
-### Actuators (actuator.erl)
-
-Actuators collect network outputs and interact with scapes:
-
-- **Output Collection**: Gathers outputs from all connected neurons (fanin)
-- **Scape Interaction**: Sends `{action, Output}` to scape, receives `{Fitness, HaltFlag}`
-- **Fitness Reporting**: Forwards fitness and halt flag to cortex
-- **Actuator Types**:
-  - `xor_SendOutput/2`: Sends output to XOR scape and gets fitness
-  - `pts/2`: Prints result to screen (for debugging)
-
-### Platform (platform.erl)
-
-The Platform module is a gen_server that manages shared infrastructure:
-
-- **Scape Management**: Hosts public scapes that can be shared across multiple networks
-- **Module Supervision**: Starts and stops supervised modules
-- **Mnesia Integration**: Initializes and manages Mnesia database for evolutionary algorithms
-- **Database Schema**: Creates tables for populations, species, agents, and neural components
-- **Utility Functions**:
-  - `platform:sync()`: Recompiles all modules using `make:all([load])`
-  - `platform:create()`: Creates Mnesia schema and tables
-  - `platform:reset()`: Deletes and recreates Mnesia schema
-  - `platform:start()`: Starts the platform gen_server
-  - `platform:stop()`: Gracefully stops the platform
-
-**Note**: Currently configured with empty module and scape lists. Designed for future evolutionary algorithm support with persistent storage in Mnesia.
-
-## Documentation
-
-**Full API documentation** is available via ExDoc. To generate and view:
-
-```bash
-# Generate documentation
-rebar3 ex_doc
-
-# Open in browser (macOS)
-open doc/readme.html
-
-# Or navigate to doc/readme.html in your browser
-```
-
-The documentation includes:
-- **Module documentation** with detailed descriptions
-- **Function specifications** with types and examples
-- **Type definitions** for all records and custom types
-- **Interactive search** and navigation
-- **Mermaid diagrams** for architecture visualization
-
-## Getting Started
-
-### Prerequisites
-
-- **Erlang/OTP 26+** - Required for running the neural network
-- **Rebar3** - Build tool and dependency manager
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/NN.git
-cd NN
-
-# Compile the project
-rebar3 compile
-
-# Generate documentation (optional)
-rebar3 ex_doc
-```
-
-### Quick Start
-
-```bash
-# Start an Erlang shell with the compiled project
-rebar3 shell
-```
-
-```erlang
-% Create a neural network for XOR problem with 3 hidden neurons
-1> genotype:construct(my_network, xor_mimic, [3]).
-
-% Train the network (runs until convergence or max attempts)
-2> exoself:map(my_network).
-
-% The trained network is automatically saved to 'my_network' file
-```
-
-## Reproducible validation
-
-Run the automated gate from the project root:
-
-```bash
-rebar3 eunit
-```
-
-It checks XOR learning with a fixed seed, identical results across two runs,
-all four output signs and magnitudes, saved fitness against an independent
-calculation, and a fresh actor evaluation of the reloaded genotype. It also
-checks concurrent trainers, failed components, blocked evaluations, caller
-death, and cleanup. Error reports from the injected failures are expected;
-the final EUnit summary determines success.
-
-A reproducible standalone run needs no `platform:start()`:
-
-```erlang
-genotype:construct("xor_network", xor_mimic, [3], #{seed => 42}).
-Pid = exoself:map("xor_network", #{
-    seed => 42,
-    max_attempts => 500,
-    evaluation_limit => 20000,
-    fitness_target => 20,
-    timeout => 1000
-}).
+XorFile = "_build/readme/xor.ets".
+ok = filelib:ensure_dir(XorFile).
+genotype:construct(XorFile, xor_mimic, [3], #{seed => 42}).
+Pid = exoself:map(XorFile, #{seed => 42, max_attempts => 500,
+    evaluation_limit => 20000, fitness_target => 20, timeout => 1000}).
 receive
     {Pid, Fitness, Evaluations, Cycles, Microseconds} ->
         {Fitness, Evaluations, Cycles, Microseconds};
-    {Pid, error, Reason} ->
-        {error, Reason}
+    {Pid, error, Reason} -> {error, Reason}
 after 30000 ->
     exit(Pid, kill),
     {error, timeout}
 end.
 ```
 
-Seeds reproduce weights and evaluation results on the same runtime; component
-IDs and elapsed times remain variable. Reaching an evaluation or failure limit
-does not guarantee convergence for arbitrary seeds or network sizes.
+`exoself:map/2` renvoie immédiatement un PID. Le résultat arrive au processus
+appelant par message ; il ne faut pas attendre un résultat synchrone de `map/2`.
+Les graines reproduisent les poids et résultats sur le même runtime, tandis que
+les identifiants et durées peuvent varier. Une limite atteinte ne prouve pas la convergence.
 
-`exoself:map/2` defaults to 50 consecutive failures, 10,000 evaluations, no
-fitness target, and a 5,000 ms timeout per evaluation or neuron response. It
-saves the best weights before returning `{Pid, Fitness, Evaluations, Cycles,
-Microseconds}` to its caller. Errors return `{Pid, error, {Class, Reason}}` and
-terminate the worker. Components are linked to their owner and cleaned up on
-completion or failure; an agent also stops when its caller disappears.
+### Paramètres d'ExoSelf
 
-`trainer:go/6` accepts the same options plus `output_dir`. Its positional
-`EvalLimit` caps total evaluations across restarts, and `MaxAttempts` counts
-consecutive restarts without a better result. Each trainer reports directly
-to its caller and prints its best genotype path. For example:
+| Option de `map/2` ou `train/2` | Signification | Défaut |
+|---|---|---|
+| `seed` | Graine des perturbations ; les poids initiaux viennent du fichier | Non fixée |
+| `evaluation_limit` | Nombre maximal d'évaluations, première mesure comprise | `10000` |
+| `max_attempts` | Échecs consécutifs, égalités comprises | `50` |
+| `fitness_target` | Arrêt lorsque le meilleur score atteint cette valeur | `inf` |
+| `timeout` | Attente maximale d'une évaluation ou d'une réponse de neurone, en ms | `5000` |
+| `scape_options` | Options par environnement, par exemple `#{life_sim => #{seeds => [11,22,33]}}` | `#{}` |
+| `progress_to` | PID destinataire de l'historique du meilleur score | Aucun |
 
-```erlang
-trainer:go(xor_mimic, [3], 5, 20000, 20,
-           #{seed => 42, max_attempts => 500, output_dir => "."}).
+`life_exoself:train/2` gère lui-même `progress_to` et restitue `history` dans son
+résultat. Le score d'essai refusé n'est pas encore inclus dans cet historique.
+
+`trainer:go/6` orchestre déjà des départs successifs. Son argument positionnel
+`MaxAttempts` compte les redémarrages consécutifs sans amélioration, tandis que
+l'option `max_attempts` concerne chaque ExoSelf. Son `EvalLimit` est un budget
+cumulé. `benchmarker:go/6` répète des sessions de trainer et imprime des statistiques ;
+il utilise un nom enregistré unique. Pour le protocole précis **1 × 10 000 contre
+10 × 1 000**, suivre les commandes commentées de [TRAIN.md](docs/TRAIN.md).
+
+## Comprendre le moteur
+
+Un neurone reçoit ses entrées, accumule une somme pondérée, applique `tanh`
+puis transmet sa sortie. Le cortex coordonne les pas. ExoSelf ajuste les poids
+**entre les évaluations**, par essais aléatoires et sélection stricte du meilleur.
+Il n'y a pas de rétropropagation ni de calcul de gradient dans cet entraînement.
+
+```mermaid
+flowchart LR
+    C[Cortex] -->|sync| S[Capteur]
+    S -->|sense| W[Scape]
+    W -->|percept| S
+    S -->|forward| N[Neurones]
+    N -->|forward| A[Actionneur]
+    A -->|action| W
+    W -->|fitness et halt| A
+    A -->|sync| C
+    C -->|evaluation_completed| E[ExoSelf]
+    E -->|backup, restore, perturb| N
+    E -->|reactivate| C
 ```
 
-The `genome_mutator` module is a placeholder and returns
-`{aborted, not_implemented}`; topology evolution is not implemented.
+Le dessin résume les messages ; les tuples réels incluent les PID des émetteurs.
+Dans Petite vie, un cycle est un pas, un épisode parcourt un monde et une
+évaluation parcourt tous les mondes d'entraînement avec les mêmes poids.
 
-## Usage
+| Processus | État et responsabilité |
+|---|---|
+| `sensor` | Connexions sortantes et scape ; fournit le vecteur de perception |
+| `neuron` | Poids courants, sauvegarde et entrées attendues ; calcule et transmet |
+| `actuator` | Connexions entrantes ; collecte les sorties et envoie l'action |
+| `cortex` | Synchronisation, fitness cumulée et cycles ; annonce la fin d'évaluation |
+| `scape` / `life_scape` | État du problème ; applique l'action et calcule le retour |
+| `exoself` | Meilleur résultat, budget et correspondance IDs/PID ; règle les poids et gère la durée de vie des processus |
 
-### Creating a Network
+Si le score augmente, ExoSelf conserve les poids. S'il baisse **ou reste égal**,
+il restaure les poids précédents. Il sélectionne ensuite chaque neurone avec une
+probabilité `1/sqrt(nombre_de_neurones)`. Les neurones sélectionnés tirent à leur
+tour les coefficients à modifier : il est possible qu'aucun poids ne change.
+La variation est d'environ ±π ; les poids perturbés sont bornés à ±2π.
 
-Create a network genotype (blueprint) with custom topology:
+Les processus utilisent des boucles `receive` et des appels terminaux. ExoSelf
+attend les accusés de modification des poids avant de réactiver le cortex.
+Les composants sont liés à leur propriétaire ; les échecs sont remontés et
+les processus nettoyés. Ce chemin ne repose pas sur un arbre de supervision OTP.
+Les tests actuels concernent un nœud local.
 
-```erlang
-% Basic: One hidden layer with 3 neurons
-genotype:construct(my_network, xor_mimic, [3]).
+Le **génotype** est la description du réseau et de ses poids, sauvegardée dans
+un fichier ETS. Le **phénotype** est l'ensemble des processus qui l'exécutent.
+`platform.erl` et une partie de `genotype.erl` contiennent aussi une infrastructure
+Mnesia pour la suite du livre ; les exemples autonomes ci-dessus n'en ont pas besoin.
 
-% Advanced: Two hidden layers with 5 and 3 neurons
-genotype:construct(deep_network, xor_mimic, [5, 3]).
+## Lire et modifier le code
+
+| Emplacement | Rôle |
+|---|---|
+| `src/exoself.erl`, `src/neuron.erl` | Boucle d'apprentissage et perturbations |
+| `src/sensor.erl`, `src/actuator.erl`, `src/cortex.erl` | Protocole du réseau à processus |
+| `src/genotype.erl`, `include/records.hrl`, `src/morphology.erl` | Description, persistance et interfaces du réseau |
+| `src/scape.erl`, `src/life_scape.erl`, `src/life_world.erl` | XOR, adaptation des messages et règles du monde |
+| `src/life_brain.erl`, `src/life_evolution.erl` | Réseau calculé par fonctions et population de référence |
+| `src/life_exoself.erl` | Conversion des poids, entraînement synchrone et enregistrement des acteurs |
+| `src/life_demo.erl`, `priv/life/index.html`, `scripts/` | Génération et affichage du replay |
+| `test/` | Tests EUnit du moteur, du monde et de leur raccordement |
+| `docs/LIFE.md`, `docs/TRAIN.md` | Explication de la démo et atelier d'expérimentation |
+
+Pour une nouvelle morphologie : décrire le capteur et l'actionneur dans
+`morphology.erl`, leurs fonctions d'interface dans `sensor.erl` et `actuator.erl`,
+puis l'environnement dans `scape.erl`. `life_mimic` fournit un exemple complet.
+Vérifier les dimensions et l'ordre des sorties ainsi que la terminaison du scape.
+
+## Vérifier les résultats
+
+```sh
+rebar3 eunit
 ```
 
-**Parameters:**
-- `my_network` - Filename for saving the genotype
-- `xor_mimic` - Morphology (problem domain configuration)
-- `[3]` or `[5, 3]` - Hidden layer sizes (number of neurons per layer)
-
-### Training a Network
-
-#### Simple Training (Single Run)
-
-```erlang
-% Create and train in one go
-exoself:map(my_network).
-```
-
-**What happens:**
-1. Loads genotype from file
-2. Spawns all neural processes (cortex, sensors, neurons, actuators, scapes)
-3. Runs perturbation-based training (by default, stops after 50 consecutive failures or 10,000 evaluations)
-4. Saves improved weights back to genotype file
-5. Prints final fitness and statistics
-
-#### Advanced Training with Trainer
-
-```erlang
-% Basic training (5 attempts, infinite eval limit, infinite fitness target)
-trainer:go(xor_mimic, [2]).
-
-% Training with custom parameters
-MaxAttempts = 10,
-EvalLimit = 1000,
-FitnessTarget = 0.9,
-trainer:go(xor_mimic, [2], MaxAttempts, EvalLimit, FitnessTarget).
-```
-
-The trainer will:
-- Create a new genotype for each training run
-- Run until MaxAttempts, EvalLimit, or FitnessTarget is reached
-- Save the best genotype to a file (e.g., `best_12345`)
-- Print the final results
-
-### Running Benchmarks
-
-```erlang
-% Run 100 training sessions and collect statistics
-benchmarker:go(xor_mimic, [2]).
-
-% Custom number of runs
-benchmarker:go(xor_mimic, [2], 50).
-
-% Full control over all parameters
-benchmarker:go(xor_mimic, [2], MaxAttempts, EvalLimit, FitnessTarget, TotRuns).
-```
-
-Benchmark output includes:
-- Fitness: Max, Min, Avg, Std
-- Evaluations: Max, Min, Avg, Std
-- Cycles: Max, Min, Avg, Std
-- Time: Max, Min, Avg, Std
-
-## Development Commands
-
-### Building and Testing
-
-```bash
-# Compile the project
-rebar3 compile
-
-# Start interactive shell with compiled modules
-rebar3 shell
-
-# Clean build artifacts
-rebar3 clean
-
-# Generate documentation
-rebar3 ex_doc
-
-# Open documentation in browser (macOS)
-open doc/readme.html
-```
-
-### Alternative: Manual Compilation (without rebar3)
-
-If you prefer to work directly in the Erlang shell:
-
-```erlang
-% Start Erlang shell
-erl
-
-% Compile all modules
-1> make:all([load]).
-
-% Or compile individual modules
-2> c(genotype).
-3> c(neuron).
-
-% Recompile changed modules (via platform)
-4> platform:sync().
-```
-
-## Network Flow
-
-### 1. Initialization Phase
-- ExoSelf loads genotype from ETS file
-- Spawns scape processes for environment simulation
-- Spawns cortex, sensors, neurons, and actuators
-- Creates IdsNPIds mapping table (ID ↔ PID)
-- Links all processes by sending initialization messages with connection info
-
-### 2. Evaluation Cycle
-- **Cortex** sends `{sync}` to all sensors
-- **Sensors** request percepts from scapes, forward to neurons
-- **Neurons** compute weighted sum + tanh activation, forward to next layer
-- **Actuators** collect outputs, send to scape, receive fitness
-- **Actuators** send `{sync, Fitness, HaltFlag}` to cortex
-- **Cortex** accumulates fitness, checks for evaluation completion
-
-### 3. Learning Phase (Perturbation-Based)
-- **ExoSelf** receives evaluation results from cortex
-- If fitness improved:
-  - Send `{weight_backup}` to all neurons → saves current weights
-  - Reset attempt counter
-- If fitness degraded:
-  - Send `{weight_restore}` to perturbed neurons → revert to backup
-  - Increment attempt counter
-- Select random neuron subset (probability = 1/sqrt(N))
-- Send `{weight_perturb}` to selected neurons
-- Send `{reactivate}` to cortex to start next evaluation
-
-### 4. Termination
-- After MAX_ATTEMPTS (50) consecutive failures, training ends
-- ExoSelf collects final weights from neurons
-- Updates genotype and saves to file
-- Sends results directly to the process that called `exoself:map`
-- All processes receive `{terminate}` messages and shut down
-
-## Implementation Details
-
-### Concurrency Model
-
-- Each component (cortex, sensor, neuron, actuator, scape) runs as a separate Erlang process
-- Communication exclusively via asynchronous message passing
-- ExoSelf manages the phenotype lifecycle without OTP supervision trees
-- Processes use receive loops to handle messages
-- IdsNPIds ETS table provides O(1) ID-to-PID and PID-to-ID lookups
-
-### Data Persistence (Genotype/Phenotype Separation)
-
-- **Genotype**: Static network blueprint stored in ETS table files
-  - Contains structure (connectivity), initial weights, morphology
-  - Created by `genotype:construct/3`
-  - Updated with trained weights after successful training
-  - Loaded via `genotype:load_from_file/1`
-- **Phenotype**: Running network of concurrent processes
-  - Spawned from genotype by `exoself:map/1`
-  - Lives only during training/evaluation
-  - Neurons maintain current weights and backup weights in memory
-  - Terminated after training; weights persisted back to genotype
-
-### Process Spawning Pattern
-
-All processes follow a common spawning pattern:
-```erlang
-gen(ExoSelf_PId, Node) ->
-    spawn(Node, ?MODULE, prep, [ExoSelf_PId]).
-
-prep(ExoSelf_PId) ->
-    receive
-        {ExoSelf_PId, InitData} ->
-            loop(InitData)
-    end.
-```
-
-This allows distributed deployment and clean initialization.
-
-### Weight Perturbation Algorithm
-
-Neurons use a random perturbation strategy:
-- Perturbation probability per weight: `MP = 1/sqrt(TotalWeights)`
-- Perturbation magnitude: `(rand:uniform() - 0.5) * 2π`
-- Weights saturated to range `[-2π, 2π]`
-- Same perturbation applied to bias weights
-
-### Morphology System
-
-Morphologies define problem-specific interfaces:
-- `morphology:Morphology(sensors)` returns sensor specifications
-- `morphology:Morphology(actuators)` returns actuator specifications
-- Each sensor/actuator specifies its scape (environment)
-- Currently implemented: `xor_mimic` for XOR problem
-
-### Scape Protocol
-
-Scapes must implement:
-- `{ScapePId, sense}` → respond with `{ScapePId, percept, Vector}`
-- `{ActuatorPId, action, Output}` → respond with `{ScapePId, Fitness, HaltFlag}`
-- `{ExoSelfPId, terminate}` → cleanup and terminate
-
-HaltFlag = 1 signals evaluation complete; 0 means continue.
-
-## Resources
-
-For learning more about Erlang/OTP and neural networks:
-
-- [Learn You Some Erlang](https://learnyousomeerlang.com/) - Excellent Erlang tutorial
-- [Erlang Documentation](https://www.erlang.org/docs) - Official documentation
-- [Making reliable distributed systems in the presence of software errors](https://erlang.org/download/armstrong_thesis_2003.pdf) - Joe Armstrong's thesis on Erlang
-
-## Example Sessions
-
-### Basic Network Creation and Training
-
-```erlang
-Eshell V14.1.1
-
-% Compile all modules
-1> make:all([load]).
-
-% Create a genotype for XOR problem with 2 hidden neurons
-2> genotype:construct(test_nn_genotype, xor_mimic, [2]).
-ok
-
-% Print the genotype structure
-3> genotype:print(test_nn_genotype).
-{cortex,cortex,[{sensor,{-0.5,1.234}}],[{actuator,{-0.5,5.678}}],
-       [{neuron,{1,1}},{neuron,{1,2}},{neuron,{2,1}}]}
-{sensor,{-0.5,1.234},cortex,xor_GetInput,{private,xor_sim},2,
-       [{neuron,{1,1}},{neuron,{1,2}}]}
-...
-
-% Train the network
-4> exoself:map(test_nn_genotype).
-ExoSelf: Starting prep for test_nn_genotype
-Cortex: Starting with 1 sensors, 3 neurons, 1 actuators
-Actuator {actuator,{-0.5,5.678}}: Got fitness 12.5, endflag 1
-Cortex:<0.95.0> finished training. Genotype has been backed up.
- Fitness:156.78
- TotEvaluations:8
- TotCycles:32
- TimeAcc:45678
-<0.89.0>
-```
-
-### Running a Benchmark
-
-```erlang
-% Run 10 training sessions to collect statistics
-5> benchmarker:go(xor_mimic, [2], 10).
-<0.120.0>
-
-Starting benchmark run 10 of 10
-Run complete: Fitness=145.67 Evals=12
-...
-Benchmark results for: xor_mimic
-Fitness::
- Max:245.89
- Min:98.45
- Avg:156.23
- Std:34.56
-Evals::
- Max:25
- Min:5
- Avg:12.3
- Std:5.2
-...
-```
-
-### Using the Trainer
-
-```erlang
-% Train with custom limits
-6> trainer:go(xor_mimic, [2], 10, 100, 200.0).
-<0.130.0>
-
-% Trainer will create unique genotype files like:
-% - experimental_123456 (working copy)
-% - best_123456 (best solution found)
-```
-
-## Key Concepts
-
-### Genotype vs Phenotype
-- **Genotype** = Blueprint (ETS table file with structure and weights)
-- **Phenotype** = Running network (living processes doing computation)
-- Training happens in phenotype, results saved to genotype
-
-### Perturbation-Based Learning
-Instead of backpropagation, this system uses evolutionary-style learning:
-1. Randomly tweak some weights
-2. If performance improves → keep changes
-3. If performance degrades → revert changes
-4. Repeat until convergence or max attempts
-
-### Message-Passing Architecture
-- No shared memory between components
-- All communication via Erlang messages
-- Natural parallelism and fault isolation
-- Supports distributed deployment across nodes
-
-### Morphologies
-Define the "body" of the neural network:
-- What sensors does it have? (inputs)
-- What actuators does it have? (outputs)
-- What scape (environment) does it interact with?
-
-## Extending the System
-
-### Adding a New Morphology
-
-1. Define sensors and actuators in `morphology.erl`:
-```erlang
-my_problem(sensors) ->
-    [#sensor{id={sensor,helpers:generate_id()},
-             name=my_GetInput,
-             scape={private,my_sim},
-             vector_length=4}];
-my_problem(actuators) ->
-    [#actuator{id={actuator,helpers:generate_id()},
-               name=my_SendOutput,
-               scape={private,my_sim},
-               vector_length=2}].
-```
-
-2. Implement sensor/actuator functions in their respective modules
-3. Implement scape in `scape.erl`:
-```erlang
-my_sim(ExoSelf_PId) ->
-    % Initialize environment
-    my_sim(ExoSelf_PId, InitialState).
-
-my_sim(ExoSelf_PId, State) ->
-    receive
-        {From, sense} ->
-            From ! {self(), percept, InputVector},
-            my_sim(ExoSelf_PId, State);
-        {From, action, Output} ->
-            Fitness = evaluate(Output, State),
-            HaltFlag = check_done(State),
-            From ! {self(), Fitness, HaltFlag},
-            my_sim(ExoSelf_PId, update_state(State));
-        {ExoSelf_PId, terminate} ->
-            ok
-    end.
-```
+La suite actuelle comprend **23 tests** : XOR, déterminisme, persistance,
+résultats routés vers les bons appelants, erreurs et nettoyage des processus,
+règles du monde, mutations de poids, sélection, export, budget commun et
+concordance entre calcul direct et acteurs. Les erreurs affichées par les
+injections de panne sont attendues ; regarder le bilan EUnit final.
+
+Un contrôle fixe les poids à la main et reproduit la règle programmée sur
+100 mondes avec les vrais acteurs : il valide la capacité du réseau à résoudre
+le problème, **pas la capacité de l'entraînement à découvrir ces poids**.
+Les réseaux appris de la démo restent moins performants que cette règle.
+Mesurer les nourritures mangées, les mondes terminés et la régularité sur des
+mondes nouveaux ; le meilleur score d'entraînement ne suffit pas.
+
+| Commande | Utilité |
+|---|---|
+| `rebar3 compile` | Compiler les sources dans `_build/default/` |
+| `rebar3 eunit` | Exécuter les tests dans le profil de test |
+| `rebar3 shell` | Ouvrir un shell avec le projet |
+| `./scripts/life.sh` | Entraîner les deux méthodes et régénérer le replay |
+| `rebar3 ex_doc` | Régénérer la documentation API dans `doc/` |
+
+Les pages ExDoc déjà présentes dans `doc/` peuvent dater d'une version antérieure.
+Les guides Markdown et les sources décrivent le parcours actuel ; certains
+anciens commentaires API restent à remettre à jour.
+
+En cas de `undef`, vérifier le répertoire, la compilation et le chemin des modules.
+Après modification, compiler puis rouvrir le shell évite d'utiliser un ancien
+module chargé. Un `badmatch` après avoir recopié une commande peut venir d'une
+variable déjà liée. Une courbe plate ne signifie pas que les essais sont identiques :
+l'historique actuel ne montre que le meilleur score conservé.
+
+## La suite du projet
+
+La progression reste centrée sur Erlang et le livre de Sher :
+
+1. Observer les essais acceptés, égaux et refusés ; comparer les redémarrages
+   selon le protocole de [l'atelier](docs/TRAIN.md).
+2. Construire un `population_monitor` autour d'ExoSelf : évaluer les individus,
+   sélectionner les parents, créer les descendants.
+3. Implémenter et tester les mutations de connexions, puis de neurones.
+4. Explorer ensuite d'autres environnements et la plasticité.
+
+La population et les mutations de structure correspondent à la prochaine étape
+du [chapitre 8 de Sher](https://link.springer.com/chapter/10.1007/978-1-4614-4463-3_8).
+Les structures de données préparatoires ne constituent pas encore ce système.
+La simulation de nourriture sert de terrain d'observation et de référence
+mesurable pour continuer.
