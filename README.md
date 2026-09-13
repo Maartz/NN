@@ -6,6 +6,27 @@
 
 > A concurrent, message-passing based neural network implementation using Erlang's actor model
 
+## Start here: a small life simulation
+
+An observable companion to the book is now available: a creature seeks food
+in a grid. Compare a programmed controller, an initial neural network, a
+population evolved for 40 generations, and the real ExoSelf actor network.
+Both learning methods share initial weights and an evaluation budget. The
+simulation runs in Erlang and exports a standalone browser replay.
+
+```sh
+./scripts/life.sh
+open _build/life/index.html
+```
+
+**[Read the short French walkthrough](docs/LIFE.md)** for the rules,
+the ExoSelf connection, modules to read in order, and measured results. This is a fixed-topology
+weight-evolution experiment; the learned controller still falls short of the
+programmed baseline. Run `rebar3 eunit` to verify this and the existing XOR path.
+
+**[Offline ExoSelf workshop (French)](docs/TRAIN.md)**: commented source map,
+copyable commands, equal-budget restart comparison, and instrumentation exercises.
+
 ## Overview
 
 This project implements a **Feed-Forward Neural Network (FFNN)** using Erlang/OTP's actor model with a **perturbation-based learning algorithm**. Each component of the neural network (neurons, sensors, actuators, cortex, and scapes) is implemented as a separate concurrent process, allowing for **parallel execution** and **message-passing based communication**.
@@ -197,8 +218,9 @@ Scapes implement the problem environments:
 
 - **XOR Simulator** (`xor_sim/1`): Provides XOR training data
   - Cycles through 4 XOR cases: `[{[-1,-1],[-1]}, {[1,-1],[1]}, {[-1,1],[1]}, {[1,1],[-1]}]`
-  - Calculates Mean Squared Error (MSE) between network output and target
-  - Returns fitness as `1/(MSE + 0.00001)` after completing all 4 cases
+  - Accumulates the Euclidean output error for each of the four cases
+  - Returns fitness as `1/(sqrt(sum(case_errors)) + 0.00001)`
+  - For scalar XOR outputs, `case_errors` are absolute errors; this legacy metric is not MSE or RMSE
 - **Protocol**: Responds to `{sense}` messages with percepts, receives `{action, Output}` messages
 - **Scope**: Can be private (spawned per network) or public (shared across networks)
 
@@ -313,6 +335,67 @@ rebar3 shell
 % The trained network is automatically saved to 'my_network' file
 ```
 
+## Reproducible validation
+
+Run the automated gate from the project root:
+
+```bash
+rebar3 eunit
+```
+
+It checks XOR learning with a fixed seed, identical results across two runs,
+all four output signs and magnitudes, saved fitness against an independent
+calculation, and a fresh actor evaluation of the reloaded genotype. It also
+checks concurrent trainers, failed components, blocked evaluations, caller
+death, and cleanup. Error reports from the injected failures are expected;
+the final EUnit summary determines success.
+
+A reproducible standalone run needs no `platform:start()`:
+
+```erlang
+genotype:construct("xor_network", xor_mimic, [3], #{seed => 42}).
+Pid = exoself:map("xor_network", #{
+    seed => 42,
+    max_attempts => 500,
+    evaluation_limit => 20000,
+    fitness_target => 20,
+    timeout => 1000
+}).
+receive
+    {Pid, Fitness, Evaluations, Cycles, Microseconds} ->
+        {Fitness, Evaluations, Cycles, Microseconds};
+    {Pid, error, Reason} ->
+        {error, Reason}
+after 30000 ->
+    exit(Pid, kill),
+    {error, timeout}
+end.
+```
+
+Seeds reproduce weights and evaluation results on the same runtime; component
+IDs and elapsed times remain variable. Reaching an evaluation or failure limit
+does not guarantee convergence for arbitrary seeds or network sizes.
+
+`exoself:map/2` defaults to 50 consecutive failures, 10,000 evaluations, no
+fitness target, and a 5,000 ms timeout per evaluation or neuron response. It
+saves the best weights before returning `{Pid, Fitness, Evaluations, Cycles,
+Microseconds}` to its caller. Errors return `{Pid, error, {Class, Reason}}` and
+terminate the worker. Components are linked to their owner and cleaned up on
+completion or failure; an agent also stops when its caller disappears.
+
+`trainer:go/6` accepts the same options plus `output_dir`. Its positional
+`EvalLimit` caps total evaluations across restarts, and `MaxAttempts` counts
+consecutive restarts without a better result. Each trainer reports directly
+to its caller and prints its best genotype path. For example:
+
+```erlang
+trainer:go(xor_mimic, [3], 5, 20000, 20,
+           #{seed => 42, max_attempts => 500, output_dir => "."}).
+```
+
+The `genome_mutator` module is a placeholder and returns
+`{aborted, not_implemented}`; topology evolution is not implemented.
+
 ## Usage
 
 ### Creating a Network
@@ -344,7 +427,7 @@ exoself:map(my_network).
 **What happens:**
 1. Loads genotype from file
 2. Spawns all neural processes (cortex, sensors, neurons, actuators, scapes)
-3. Runs perturbation-based training (up to 50 attempts)
+3. Runs perturbation-based training (by default, stops after 50 consecutive failures or 10,000 evaluations)
 4. Saves improved weights back to genotype file
 5. Prints final fitness and statistics
 
@@ -459,7 +542,7 @@ erl
 - After MAX_ATTEMPTS (50) consecutive failures, training ends
 - ExoSelf collects final weights from neurons
 - Updates genotype and saves to file
-- Sends results to trainer process (if registered)
+- Sends results directly to the process that called `exoself:map`
 - All processes receive `{terminate}` messages and shut down
 
 ## Implementation Details
@@ -670,4 +753,3 @@ my_sim(ExoSelf_PId, State) ->
             ok
     end.
 ```
-

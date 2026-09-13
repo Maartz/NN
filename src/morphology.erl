@@ -166,3 +166,12 @@ xor_mimic(actuators) ->
         scape = {private, xor_sim},
         vector_length = 1
     }].
+
+
+%% Seven observations and four action scores, in north/east/south/west order.
+life_mimic(sensors) ->
+    [#sensor{id = {sensor, helpers:generate_id()}, name = life_GetInput,
+             scape = {private, life_sim}, vector_length = 7}];
+life_mimic(actuators) ->
+    [#actuator{id = {actuator, helpers:generate_id()}, name = life_SendOutput,
+               scape = {private, life_sim}, vector_length = 4}].

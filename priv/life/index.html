@@ -1,0 +1,1142 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Petite vie · Une expérience en Erlang</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #edf3f8;
+        --ink: #20364c;
+        --muted: #52687c;
+        --line: #ccdbe7;
+        --blue: #326dc9;
+        --pale: #e5eefb;
+        --food: #dd792d;
+        --white: #fff;
+        --green: #28745e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          15px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button,
+      select {
+        cursor: pointer;
+      }
+      button {
+        color: inherit;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid var(--blue);
+        outline-offset: 4px;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      a {
+        color: var(--blue);
+      }
+      .page {
+        max-width: 1180px;
+        margin: auto;
+        padding: 28px 34px 38px;
+      }
+      .masthead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .brand {
+        font-weight: 700;
+      }
+      .stamp {
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--muted);
+      }
+      .intro {
+        margin: 28px 0 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 24px;
+      }
+      h1 {
+        font:
+          normal clamp(32px, 4vw, 48px) / 1.12 Georgia,
+          serif;
+        margin: 0 0 10px;
+        letter-spacing: -1.3px;
+      }
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        max-width: 660px;
+      }
+      .world-select {
+        flex-shrink: 0;
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      select {
+        background: var(--white);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        padding: 10px 30px 10px 12px;
+        border-radius: 8px;
+      }
+      .experiment {
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px #20364c06;
+      }
+      .modebar {
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      .modes {
+        display: flex;
+        gap: 4px;
+        background: var(--paper);
+        padding: 4px;
+        border-radius: 10px;
+        flex-shrink: 0;
+      }
+      .mode {
+        border: 0;
+        background: transparent;
+        padding: 9px 14px;
+        border-radius: 7px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .mode[aria-pressed="true"] {
+        background: var(--blue);
+        color: white;
+        box-shadow: 0 2px 6px #326dc925;
+      }
+      .mode-desc {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+        max-width: 460px;
+      }
+      .lab {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 330px;
+      }
+      .habitat {
+        padding: 22px 28px;
+      }
+      .world-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .live-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--blue);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      .board-wrap {
+        max-width: 480px;
+        margin: auto;
+      }
+      .board {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1;
+        border: 1px solid #c1d3e3;
+        border-radius: 10px;
+        background: #f5f9fc;
+      }
+      .legend {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        font-size: 11px;
+        color: var(--muted);
+        margin: 12px 0 16px;
+      }
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .swatch {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--blue);
+      }
+      .swatch.food {
+        background: var(--food);
+      }
+      .swatch.trail {
+        height: 2px;
+        width: 17px;
+        background: #769dd5;
+      }
+      .transport {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .control {
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 8px;
+        padding: 8px 12px;
+        min-height: 40px;
+        font-size: 12px;
+      }
+      .primary {
+        background: var(--blue);
+        color: white;
+        border-color: var(--blue);
+        min-width: 92px;
+      }
+      .speed {
+        margin-left: auto;
+        font-size: 12px;
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        color: var(--muted);
+      }
+      .speed select {
+        padding: 8px 6px;
+        min-height: 40px;
+      }
+      .timeline {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .timeline input {
+        width: 100%;
+        accent-color: var(--blue);
+      }
+      .timeline output {
+        font-size: 11px;
+        min-width: 68px;
+        text-align: right;
+      }
+      .inspector {
+        border-left: 1px solid var(--line);
+        background: #fafcfe;
+        padding: 22px 23px;
+      }
+      .inspector h2 {
+        font:
+          normal 22px Georgia,
+          serif;
+        margin: 0 0 16px;
+      }
+      .vitals {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .stat-label {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .stat-value {
+        font-size: 26px;
+        line-height: 1.4;
+        font-weight: 500;
+      }
+      .stat-value small {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .energy-track {
+        height: 5px;
+        background: var(--line);
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 10px 0 18px;
+      }
+      .energy-fill {
+        height: 100%;
+        background: var(--green);
+        width: 66.6%;
+      }
+      .section-label {
+        margin: 19px 0 8px;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      .sensor-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        font-size: 12px;
+      }
+      .sensor-row .mono {
+        color: var(--blue);
+      }
+      .walls {
+        display: flex;
+        gap: 5px;
+        margin: 7px 0 4px;
+      }
+      .wall {
+        flex: 1;
+        text-align: center;
+        padding: 3px;
+        border-radius: 5px;
+        background: var(--paper);
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .wall.active {
+        background: #ead1c4;
+        color: #70401f;
+      }
+      .microcopy {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.55;
+        margin: 7px 0;
+      }
+      .outputs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .output {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 1px;
+        text-align: center;
+        font-size: 10px;
+      }
+      .output strong {
+        display: block;
+        font-size: 18px;
+        font-weight: 400;
+      }
+      .output.chosen {
+        border-color: var(--blue);
+        background: var(--pale);
+        color: var(--blue);
+      }
+      .decision {
+        font-size: 12px;
+        margin-top: 10px;
+        min-height: 36px;
+      }
+      .event {
+        margin-top: 15px;
+        padding: 11px 12px;
+        background: var(--paper);
+        border-radius: 8px;
+        font-size: 12px;
+        min-height: 58px;
+      }
+      .event strong {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+        color: var(--muted);
+      }
+      .bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 36px;
+        margin-top: 27px;
+      }
+      .bottom h2 {
+        font:
+          normal 23px Georgia,
+          serif;
+        margin: 0 0 7px;
+      }
+      .bottom p {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+      .comparison {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .comparison th {
+        text-align: left;
+        font-weight: 500;
+        color: var(--muted);
+        font-size: 10px;
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .comparison td {
+        padding: 10px 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .comparison th:not(:first-child),
+      .comparison td:not(:first-child) {
+        text-align: right;
+      }
+      .comparison tr.selected td {
+        color: var(--blue);
+        background: #e5eefb66;
+      }
+      .chart {
+        width: 100%;
+        height: 110px;
+        display: block;
+      }
+      .chart-caption {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .finding {
+        margin-top: 20px;
+        padding: 15px 18px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .finding strong {
+        font-weight: 600;
+      }
+      .details {
+        margin-top: 22px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      summary {
+        cursor: pointer;
+        color: var(--ink);
+        font-weight: 600;
+        min-height: 30px;
+      }
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 26px;
+        margin: 12px 0;
+      }
+      .details h3 {
+        font-size: 12px;
+        color: var(--ink);
+        margin: 0 0 6px;
+      }
+      .details p {
+        margin: 0 0 8px;
+      }
+      code {
+        font:
+          11px ui-monospace,
+          SFMono-Regular,
+          monospace;
+        background: #dfe9f2;
+        padding: 2px 5px;
+        border-radius: 4px;
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 20px;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+      @media (max-width: 850px) {
+        .page {
+          padding: 22px;
+        }
+        .modebar {
+          align-items: start;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .lab {
+          grid-template-columns: minmax(0, 1fr) 280px;
+        }
+        .habitat {
+          padding: 20px;
+        }
+        .inspector {
+          padding: 20px 17px;
+        }
+        .intro {
+          align-items: start;
+        }
+        .intro p {
+          max-width: 460px;
+        }
+      }
+      @media (max-width: 650px) {
+        .page {
+          padding: 18px 14px;
+        }
+        .intro {
+          display: block;
+          margin: 24px 0 20px;
+        }
+        .world-select {
+          margin-top: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        h1 {
+          font-size: 36px;
+        }
+        .stamp {
+          font-size: 10px;
+        }
+        .modebar {
+          padding: 12px;
+        }
+        .modes {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+        .mode {
+          flex: 1;
+          padding: 9px 6px;
+          font-size: 11px;
+        }
+        .mode-desc {
+          font-size: 12px;
+        }
+        .lab {
+          display: block;
+        }
+        .habitat {
+          padding: 16px;
+        }
+        .inspector {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+          padding: 20px;
+        }
+        .bottom {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+        .details-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .board-wrap {
+          max-width: 440px;
+        }
+        .inspector h2 {
+          font-size: 21px;
+        }
+        .sensor-row,
+        .decision,
+        .event {
+          font-size: 13px;
+        }
+        .output {
+          font-size: 12px;
+        }
+        .legend {
+          gap: 12px;
+        }
+        .speed span {
+          display: none;
+        }
+        footer {
+          flex-direction: column;
+        }
+        .control {
+          padding: 8px 9px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <span class="brand">NN / Petite vie</span
+        ><span class="stamp"
+          >Une expérience en Erlang · seed
+          <span id="experiment-seed">42</span></span
+        >
+      </header>
+      <div class="intro">
+        <div>
+          <h1>La vie, un pas à la fois.</h1>
+          <p>
+            Trouver de la nourriture avant de manquer d'énergie.<br />Une règle
+            simple, puis un réseau qui essaie d'apprendre.
+          </p>
+        </div>
+        <label class="world-select"
+          >Monde de validation<select
+            id="world"
+            aria-label="Monde de validation"
+          ></select
+        ></label>
+      </div>
+      <main>
+        <p class="microcopy" id="budget-note"></p>
+        <section class="experiment" aria-label="Simulation et décisions">
+          <div class="modebar">
+            <div
+              class="modes"
+              role="group"
+              aria-label="Comportement de la créature"
+            >
+              <button class="mode" data-mode="scripted" aria-pressed="false">
+                Programmé</button
+              ><button class="mode" data-mode="initial" aria-pressed="false">
+                Réseau initial</button
+              ><button class="mode" data-mode="evolved" aria-pressed="false">
+                Population</button
+              ><button class="mode" data-mode="exoself" aria-pressed="true">
+                ExoSelf
+              </button>
+            </div>
+            <p class="mode-desc" id="mode-description"></p>
+          </div>
+          <div class="lab">
+            <div class="habitat">
+              <div class="world-top">
+                <span class="live-label"
+                  ><i class="dot" aria-hidden="true"></i
+                  ><span id="world-status">Prête à partir</span></span
+                ><span class="mono">12 × 12 cases</span>
+              </div>
+              <div class="board-wrap">
+                <svg
+                  id="board"
+                  class="board"
+                  viewBox="0 0 480 480"
+                  role="img"
+                  aria-label="Monde de la créature"
+                ></svg>
+              </div>
+              <div class="legend" aria-hidden="true">
+                <span><i class="swatch"></i>Créature</span
+                ><span><i class="swatch food"></i>Nourriture</span
+                ><span><i class="swatch trail"></i>Trajet récent</span>
+              </div>
+              <div class="transport">
+                <button id="play" class="control primary">▶ Lire</button
+                ><button id="step" class="control">Un pas →</button
+                ><button
+                  id="reset"
+                  class="control"
+                  aria-label="Revenir au début"
+                >
+                  ↺ Début</button
+                ><label class="speed"
+                  ><span>Vitesse</span
+                  ><select id="speed" aria-label="Vitesse de lecture">
+                    <option value="600">Lente</option>
+                    <option value="220" selected>Normale</option>
+                    <option value="65">Rapide</option>
+                  </select></label
+                >
+              </div>
+              <div class="timeline">
+                <label for="time" class="sr-only">Pas de la simulation</label
+                ><input
+                  id="time"
+                  type="range"
+                  min="0"
+                  value="0"
+                  max="160"
+                /><output id="tick" class="mono" for="time">0 / 160</output>
+              </div>
+            </div>
+            <aside
+              class="inspector"
+              aria-label="État et décision de la créature"
+            >
+              <h2>Dans sa tête</h2>
+              <div class="vitals">
+                <div>
+                  <div class="stat-label">Énergie</div>
+                  <div class="stat-value mono">
+                    <span id="energy">40</span><small> / 60</small>
+                  </div>
+                </div>
+                <div>
+                  <div class="stat-label">Nourritures mangées</div>
+                  <div class="stat-value mono">
+                    <span id="eaten">0</span><small> / 14</small>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="energy-track"
+                role="meter"
+                id="energy-meter"
+                aria-label="Énergie"
+                aria-valuemin="0"
+                aria-valuemax="60"
+                aria-valuenow="40"
+              >
+                <div class="energy-fill" id="energy-fill"></div>
+              </div>
+              <div class="section-label">Ce qu'elle perçoit</div>
+              <div class="sensor-row">
+                <span>Nourriture · axe horizontal</span
+                ><span class="mono" id="dx"></span>
+              </div>
+              <div class="sensor-row">
+                <span>Nourriture · axe vertical</span
+                ><span class="mono" id="dy"></span>
+              </div>
+              <div class="sensor-row">
+                <span>Réserve d'énergie</span
+                ><span class="mono" id="energy-input"></span>
+              </div>
+              <div class="walls" id="walls"></div>
+              <p class="microcopy">
+                Elle connaît la direction de la nourriture la plus proche. Le
+                cercle orange indique sa cible actuelle.
+              </p>
+              <div class="section-label" id="decision-label">
+                Son prochain mouvement
+              </div>
+              <div class="outputs" id="outputs"></div>
+              <div class="decision" id="decision"></div>
+              <div class="event">
+                <strong>Ce qui vient de se passer</strong
+                ><span id="event-text"></span>
+              </div>
+            </aside>
+          </div>
+        </section>
+        <div class="bottom">
+          <section aria-labelledby="comparison-heading">
+            <h2 id="comparison-heading">Le même monde, quatre essais.</h2>
+            <p>
+              Résultat final de chaque épisode. Même départ, même nourriture.
+            </p>
+            <table class="comparison">
+              <thead>
+                <tr>
+                  <th>Comportement</th>
+                  <th>Mangées</th>
+                  <th>Pas</th>
+                  <th>Fin</th>
+                </tr>
+              </thead>
+              <tbody id="comparison"></tbody>
+            </table>
+          </section>
+          <section aria-labelledby="history-heading">
+            <h2 id="history-heading">Deux méthodes, le même budget.</h2>
+            <p>Score du meilleur réseau sur les 3 mondes d'entraînement.</p>
+            <svg
+              id="history"
+              class="chart"
+              viewBox="0 0 480 110"
+              role="img"
+              aria-label="Progression du score d'entraînement"
+            ></svg>
+            <div class="chart-caption">
+              <span id="first-evaluation"></span
+              ><span id="last-generation"></span>
+            </div>
+            <p class="microcopy" style="margin-top: 10px">
+              <span style="color: #326dc9">━ Population</span> ·
+              <span style="color: #7c57ac">━ ExoSelf</span><br />
+              Score = 100 × nourritures mangées + pas survécus. Une évaluation
+              parcourt les trois mondes d'entraînement.
+            </p>
+          </section>
+        </div>
+        <div class="finding" id="finding"></div>
+        <details class="details">
+          <summary>Comprendre l'expérience et retrouver le code</summary>
+          <div class="details-grid">
+            <div>
+              <h3>Les règles tiennent en quelques lignes.</h3>
+              <p>
+                Chaque action coûte 1 énergie, même contre un mur. Une
+                nourriture apporte 18 énergie, jusqu'à 60. Départ avec 40. Fin à
+                zéro énergie, après 160 pas ou une fois les 14 nourritures
+                mangées.
+              </p>
+              <p>
+                Le programme se dirige vers la nourriture la plus proche. Le
+                réseau reçoit 7 nombres, traverse 6 neurones cachés et produit 4
+                scores. Le plus grand choisit la direction. Toutes les
+                activations utilisent tanh.
+              </p>
+              <p>
+                <code>life_world.erl</code> : percevoir et agir.<br /><code
+                  >life_brain.erl</code
+                >
+                : réseau de la population simplifiée.<br />
+                <code>exoself.erl</code> et <code>neuron.erl</code> : moteur du
+                livre.
+              </p>
+            </div>
+            <div>
+              <h3>Une expérience modeste, entièrement rejouable.</h3>
+              <p id="experiment-details"></p>
+              <p>
+                Seuls les poids évoluent ; aucune mutation de topologie. Les
+                mondes restent simples : ni prédateurs, ni reproduction dans la
+                grille, ni mémoire. Les candidats vivent dans des épisodes
+                séparés.
+              </p>
+              <p>
+                <code>life_evolution.erl</code> : évaluer et sélectionner.<br /><code
+                  >life_demo.erl</code
+                >
+                : exporter les résultats.<br />
+                <code>life_scape.erl</code> : monde de nourriture relié aux
+                acteurs.<br />
+                <code>life_exoself.erl</code> : génotype et épisodes du réseau
+                sauvegardé.
+              </p>
+            </div>
+          </div>
+        </details>
+      </main>
+      <footer>
+        <span
+          >Épisodes calculés en Erlang. Cette page les rejoue, elle n'entraîne
+          pas en direct.</span
+        ><span>Régénérer : <code>./scripts/life.sh</code></span>
+      </footer>
+    </div>
+    <script id="life-data" type="application/json">
+      __LIFE_DATA__
+    </script>
+    <script>
+      "use strict";
+      const data = JSON.parse(document.getElementById("life-data").textContent);
+      const el = (id) => document.getElementById(id);
+      const names = {
+        scripted: "Programmé",
+        initial: "Réseau initial",
+        evolved: "Population",
+        exoself: "ExoSelf",
+      };
+      const directions = ["north", "east", "south", "west"],
+        labels = ["Nord", "Est", "Sud", "Ouest"],
+        arrows = ["↑", "→", "↓", "←"];
+      const endNames = {
+        alive: "En mouvement",
+        cleared: "Tout mangé",
+        exhausted: "Énergie épuisée",
+        limit: "160 pas atteints",
+      };
+      const descriptions = {
+        scripted:
+          "Une règle écrite à la main : avancer vers la nourriture la plus proche. Aucun apprentissage.",
+        initial:
+          "Le meilleur réseau de la population initiale, avant toute mutation. Il n’a pas appris.",
+        evolved: `Population simplifiée : ${data.generations} générations, quatre parents conservés et des descendants aux poids modifiés.`,
+        exoself: `ExoSelf : ${data.exoself.evaluations.toLocaleString("fr-FR")} évaluations de réglage, avec ses vrais processus neurones et sa perturbation d’origine.`,
+      };
+      let mode = "exoself",
+        worldIndex = 0,
+        tick = 0,
+        timer = null;
+      function episode() {
+        return data.worlds[worldIndex][mode];
+      }
+      function pause() {
+        clearInterval(timer);
+        timer = null;
+        el("play").textContent = "▶ Lire";
+        el("play").setAttribute("aria-label", "Lire l’épisode");
+      }
+      function play() {
+        if (timer) {
+          pause();
+          return;
+        }
+        if (tick >= episode().frames.length - 1) tick = 0;
+        timer = setInterval(
+          () => {
+            if (tick < episode().frames.length - 1) {
+              tick++;
+              render();
+            }
+            if (tick === episode().frames.length - 1) pause();
+          },
+          Number(el("speed").value),
+        );
+        el("play").textContent = "Ⅱ Pause";
+        el("play").setAttribute("aria-label", "Mettre en pause");
+        render();
+      }
+      function signed(n) {
+        return (n > 0 ? "+" : "") + n.toFixed(2);
+      }
+      function render() {
+        const ep = episode(),
+          f = ep.frames[tick],
+          cell = 40,
+          [x, y] = f.position;
+        el("time").max = ep.frames.length - 1;
+        el("time").value = tick;
+        el("tick").textContent = `${tick} / ${ep.steps} pas`;
+        el("step").disabled = tick === ep.frames.length - 1;
+        el("reset").disabled = tick === 0;
+        el("energy").textContent = f.energy;
+        el("eaten").textContent = f.eaten;
+        el("energy-fill").style.width = (f.energy / 60) * 100 + "%";
+        el("energy-fill").style.background =
+          f.energy < 12 ? "var(--food)" : "var(--green)";
+        el("energy-meter").setAttribute("aria-valuenow", f.energy);
+        el("world-status").textContent =
+          tick === 0 ? "Prête à partir" : endNames[f.status];
+        el("dx").textContent = signed(f.inputs[0]);
+        el("dy").textContent = signed(f.inputs[1]);
+        el("energy-input").textContent = f.inputs[2].toFixed(2);
+        el("walls").innerHTML = labels
+          .map(
+            (d, i) =>
+              `<span class="wall ${f.inputs[i + 3] ? "active" : ""}">${d} ${f.inputs[i + 3] ? "bloqué" : "libre"}</span>`,
+          )
+          .join("");
+        const chosen = directions.indexOf(f.action);
+        el("outputs").innerHTML = labels
+          .map(
+            (d, i) =>
+              `<div class="output ${chosen === i ? "chosen" : ""}"><strong>${arrows[i]}</strong>${d}<br><span class="mono">${f.outputs.length ? f.outputs[i].toFixed(2) : "—"}</span></div>`,
+          )
+          .join("");
+        el("decision-label").textContent =
+          mode === "scripted"
+            ? "Son prochain mouvement"
+            : "Les quatre sorties du réseau";
+        el("decision").textContent =
+          chosen < 0
+            ? "Épisode terminé. Reviens sur un pas pour inspecter la décision."
+            : mode === "scripted"
+              ? `La règle choisit ${labels[chosen].toLowerCase()} pour se rapprocher de la nourriture.`
+              : `${labels[chosen]} a le score le plus élevé. Ce score n’est pas une probabilité.`;
+        const events = {
+          start: "Départ au centre, avec 40 énergie.",
+          moved: "Une case parcourue. −1 énergie.",
+          wall: "Un mur bloque le mouvement. −1 énergie.",
+          ate: "Une nourriture mangée : −1 pour le pas, +18, au maximum 60.",
+        };
+        el("event-text").textContent =
+          events[f.event] +
+          (f.status === "alive" ? "" : ` ${endNames[f.status]}.`);
+        let nearest = null;
+        for (const p of f.food) {
+          const distance = Math.abs(p[0] - x) + Math.abs(p[1] - y);
+          if (
+            !nearest ||
+            distance < nearest.distance ||
+            (distance === nearest.distance &&
+              (p[0] < nearest.p[0] ||
+                (p[0] === nearest.p[0] && p[1] < nearest.p[1])))
+          )
+            nearest = { p, distance };
+        }
+        const trail = ep.frames
+          .slice(Math.max(0, tick - 26), tick + 1)
+          .map(
+            (t) => `${t.position[0] * cell + 20},${t.position[1] * cell + 20}`,
+          )
+          .join(" ");
+        let content =
+          '<defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#dbe6ef" stroke-width="1"/></pattern></defs><rect width="480" height="480" fill="url(#grid)"/>';
+        content += `<polyline points="${trail}" stroke="#7b9dcc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".65"/>`;
+        if (nearest)
+          content += `<circle cx="${nearest.p[0] * cell + 20}" cy="${nearest.p[1] * cell + 20}" r="14" fill="none" stroke="#cf6e23" stroke-width="1.4" stroke-dasharray="3 3"/>`;
+        for (const [fx, fy] of f.food)
+          content += `<circle cx="${fx * cell + 20}" cy="${fy * cell + 20}" r="6" fill="#dd792d"/><circle cx="${fx * cell + 18}" cy="${fy * cell + 18}" r="1.6" fill="#f8bf84"/>`;
+        content += `<g transform="translate(${x * cell + 20},${y * cell + 20})"><circle r="16" fill="#326dc9" opacity=".12"/><circle r="10" fill="#326dc9"/><path d="M 0 -6 L 4 3 L 0 1 L -4 3 Z" fill="white" transform="rotate(${Math.max(chosen, 0) * 90})"/></g>`;
+        el("board").innerHTML = content;
+        el("board").setAttribute(
+          "aria-label",
+          `Pas ${tick}. Créature colonne ${x + 1}, ligne ${y + 1}. Énergie ${f.energy}. ${f.eaten} nourritures mangées sur 14. ${endNames[f.status]}.`,
+        );
+      }
+      function selectScenario() {
+        pause();
+        tick = 0;
+        el("mode-description").textContent = descriptions[mode];
+        document
+          .querySelectorAll(".mode")
+          .forEach((b) =>
+            b.setAttribute("aria-pressed", b.dataset.mode === mode),
+          );
+        el("comparison").innerHTML = Object.entries(names)
+          .map(([key, name]) => {
+            const e = data.worlds[worldIndex][key];
+            return `<tr class="${key === mode ? "selected" : ""}"><td>${name}</td><td class="mono">${e.eaten} / 14</td><td class="mono">${e.steps}</td><td>${endNames[e.status]}</td></tr>`;
+          })
+          .join("");
+        render();
+      }
+      function showHistory() {
+        const series = [
+          { name: "Population", history: data.history, color: "#326dc9" },
+          { name: "ExoSelf", history: data.exoself.history, color: "#7c57ac" },
+        ];
+        const max =
+          Math.max(...series.flatMap((s) => s.history.map((g) => g.score)), 1) *
+          1.1;
+        const start = data.population,
+          end = data.evaluations;
+        const point = (g) => [
+          42 + ((g.evaluations - start) / (end - start || 1)) * 423,
+          93 - (g.score / max) * 80,
+        ];
+        let svg = `<path d="M42 10V93H465" fill="none" stroke="#c1d3e3"/><text x="0" y="17" font-size="10" fill="#52687c">${Math.ceil(max)}</text><text x="24" y="96" font-size="10" fill="#52687c">0</text>`;
+        for (const s of series) {
+          // Horizontal segments show the score actually known between evaluations.
+          let path = "";
+          s.history.forEach((g, i) => {
+            const [x, y] = point(g);
+            path += i === 0 ? `M${x},${y}` : `H${x}V${y}`;
+          });
+          svg += `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+          const stride = Math.max(1, Math.ceil(s.history.length / 60));
+          svg += s.history
+            .filter((g, i) => i % stride === 0 || i === s.history.length - 1)
+            .map((g) => {
+              const [x, y] = point(g);
+              return `<circle cx="${x}" cy="${y}" r="2" fill="${s.color}"><title>${s.name} · ${g.evaluations} évaluations : score ${g.score.toFixed(1)}</title></circle>`;
+            })
+            .join("");
+        }
+        el("history").innerHTML = svg;
+        el("history").setAttribute(
+          "aria-label",
+          `${end} évaluations par méthode. Score initial ${data.history[0].score.toFixed(1)}, population ${data.history.at(-1).score.toFixed(1)}, ExoSelf ${data.exoself.score.toFixed(1)}.`,
+        );
+        el("first-evaluation").textContent =
+          `${start} évaluations · départ partagé`;
+        el("last-generation").textContent =
+          `${end.toLocaleString("fr-FR")} évaluations`;
+      }
+      for (const [i, w] of data.worlds.entries()) {
+        const o = document.createElement("option");
+        o.value = i;
+        o.textContent = `Monde ${i + 1} · seed ${w.seed}`;
+        el("world").append(o);
+      }
+      document.querySelectorAll(".mode").forEach((b) =>
+        b.addEventListener("click", () => {
+          mode = b.dataset.mode;
+          selectScenario();
+        }),
+      );
+      el("world").addEventListener("change", (e) => {
+        worldIndex = Number(e.target.value);
+        selectScenario();
+      });
+      el("play").addEventListener("click", play);
+      el("step").addEventListener("click", () => {
+        pause();
+        tick = Math.min(tick + 1, episode().frames.length - 1);
+        render();
+      });
+      el("reset").addEventListener("click", () => {
+        pause();
+        tick = 0;
+        render();
+      });
+      el("time").addEventListener("input", (e) => {
+        pause();
+        tick = Number(e.target.value);
+        render();
+      });
+      el("speed").addEventListener("change", () => {
+        if (timer) {
+          pause();
+          play();
+        }
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) pause();
+      });
+      const mean = (key) =>
+        data.worlds.reduce((sum, w) => sum + w[key].eaten, 0) /
+        data.worlds.length;
+      el("finding").innerHTML =
+        `<strong>Résultats sur les trois mondes de validation.</strong> Nourritures mangées en moyenne : réseau initial <strong>${mean("initial").toFixed(1).replace(".", ",")} / 14</strong>, population <strong>${mean("evolved").toFixed(1).replace(".", ",")} / 14</strong>, ExoSelf <strong>${mean("exoself").toFixed(1).replace(".", ",")} / 14</strong>. Le programme atteint <strong>${mean("scripted").toFixed(1).replace(".", ",")} / 14</strong>. Une seule seed d’entraînement et trois mondes de validation : cette comparaison ne suffit pas à désigner une méthode généralement supérieure.`;
+      el("experiment-seed").textContent = data.seed;
+      el("budget-note").textContent =
+        `Même réseau de départ · ${data.evaluations.toLocaleString("fr-FR")} évaluations par méthode · 3 épisodes par évaluation · mondes de validation exclus de la sélection`;
+      el("experiment-details").textContent =
+        `${data.population} candidats initiaux évalués sur les seeds ${data.training_seeds.join(", ")}. Les deux méthodes partent du même meilleur réseau. Population : ${data.generations} générations × ${data.population} évaluations supplémentaires. ExoSelf : ${data.exoself.evaluations} évaluations supplémentaires, première réévaluation comprise. Pour ce comparatif, la limite d’échecs consécutifs d’ExoSelf est relevée à son budget, au lieu des 50 par défaut. Les seeds ${data.validation_seeds.join(", ")} servent uniquement à la validation après entraînement. Le budget compte les évaluations, pas le temps CPU ; les durées d’épisode peuvent différer.`;
+      selectScenario();
+      showHistory();
+    </script>
+  </body>
+</html>

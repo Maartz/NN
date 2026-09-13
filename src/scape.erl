@@ -39,7 +39,7 @@
 %%% ### XOR Scape (xor_sim)
 %%% Provides the classic XOR problem for testing non-linearly separable learning:
 %%% - **Training set**: 4 cases ([-1,-1]→[-1], [1,-1]→[1], [-1,1]→[1], [1,1]→[-1])
-%%% - **Fitness**: 1 / (MSE + 0.00001), where MSE is mean squared error
+%%% - **Fitness**: 1 / (sqrt(sum of per-case Euclidean errors) + 0.00001)
 %%% - **Halt**: Signals completion after all 4 cases evaluated
 %%%
 %%% ## Evaluation Cycle
@@ -79,7 +79,7 @@
 %% '''
 -spec gen(pid(), node()) -> pid().
 gen(ExoSelf_PId, Node) ->
-    spawn(Node, ?MODULE, prep, [ExoSelf_PId]).
+    spawn_link(Node, ?MODULE, prep, [ExoSelf_PId]).
 
 %%==============================================================================
 %% Internal Functions - Processing Loop
@@ -92,6 +92,8 @@ gen(ExoSelf_PId, Node) ->
 %% This allows dynamic selection of environment types.
 prep(ExoSelf_PId) ->
     receive
+        {ExoSelf_PId, Name, Options} ->
+            scape:Name(ExoSelf_PId, Options);
         {ExoSelf_PId, Name} ->
             scape:Name(ExoSelf_PId)
     end.
@@ -118,8 +120,8 @@ prep(ExoSelf_PId) ->
 %%
 %% === Fitness Calculation ===
 %% After all 4 cases are evaluated:
-%% - **MSE** = sqrt(sum of squared errors)
-%% - **Fitness** = 1 / (MSE + 0.00001)
+%% - **Aggregate error** = sqrt(sum of per-case Euclidean errors)
+%% - **Fitness** = 1 / (aggregate error + 0.00001)
 %% - Higher fitness = better performance
 %% - Perfect solution achieves fitness ≈ 100000
 %%
@@ -171,8 +173,8 @@ xor_sim(ExoSelf_PId, {[{Input, CorrectOutput} | XOR], MXOR}, ErrAcc) ->
             case XOR of
                 [] ->
                     % All 4 cases evaluated - calculate final fitness
-                    MSE = math:sqrt(ErrAcc + Error),
-                    Fitness = 1 / (MSE + 0.00001),
+                    AggregateError = math:sqrt(ErrAcc + Error),
+                    Fitness = 1 / (AggregateError + 0.00001),
                     From ! {self(), Fitness, 1},
                     xor_sim(ExoSelf_PId, {MXOR, MXOR}, 0);
                 _ ->
@@ -187,7 +189,7 @@ xor_sim(ExoSelf_PId, {[{Input, CorrectOutput} | XOR], MXOR}, ErrAcc) ->
 %% @private
 %% Calculate euclidean distance between two vectors
 %%
-%% Computes the root mean squared error (RMSE) between the network's
+%% Computes the Euclidean distance between the network's
 %% output and the expected target output.
 %%
 %% === Formula ===
@@ -201,9 +203,14 @@ xor_sim(ExoSelf_PId, {[{Input, CorrectOutput} | XOR], MXOR}, ErrAcc) ->
 %% - `ErrorAcc' - Accumulator for squared error sum
 %%
 %% === Returns ===
-%% Float representing the euclidean distance (RMSE)
+%% Float representing the Euclidean distance
 -spec list_compare(list(float()), list(float()), float()) -> float().
 list_compare([X | List1], [Y | List2], ErrorAcc) ->
     list_compare(List1, List2, ErrorAcc + math:pow(X - Y, 2));
 list_compare([], [], ErrorAcc) ->
     math:sqrt(ErrorAcc).
+
+
+%% Food-world adapter, using the same protocol as xor_sim.
+life_sim(Owner) -> life_sim(Owner, #{}).
+life_sim(Owner, Options) -> life_scape:run(Owner, Options).

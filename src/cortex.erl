@@ -105,7 +105,7 @@
 %% '''
 -spec gen(pid(), node()) -> pid().
 gen(ExoSelf_PId, Node) ->
-    spawn(Node, ?MODULE, prep, [ExoSelf_PId]).
+    spawn_link(Node, ?MODULE, prep, [ExoSelf_PId]).
 
 %%==============================================================================
 %% Internal Functions - Processing Loop

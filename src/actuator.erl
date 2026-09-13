@@ -73,7 +73,7 @@
 %% '''
 -spec gen(pid(), node()) -> pid().
 gen(ExoSelf_PId, Node) ->
-    spawn(Node, ?MODULE, prep, [ExoSelf_PId]).
+    spawn_link(Node, ?MODULE, prep, [ExoSelf_PId]).
 
 %%==============================================================================
 %% Actuator Functions
@@ -121,7 +121,7 @@ pts(Result, _Scape) ->
 %%
 %% === Returns ===
 %% Tuple `{Fitness, HaltFlag}' where:
-%% - **Fitness**: 1/(MSE + 0.00001), higher is better
+%% - **Fitness**: inverse aggregate error from the scape, higher is better
 %% - **HaltFlag**: 1 when all 4 XOR cases evaluated, 0 otherwise
 %%
 %% === Examples ===
@@ -173,3 +173,11 @@ loop(Id, ExoSelf_PId, Cx_PId, Scape, AName, {[], MFanin_PIds}, Acc) ->
     % io:format("Actuator ~p: Got fitness ~p, endflag ~p~n", [Id, Fitness, EndFlag]),
     Cx_PId ! {self(), sync, Fitness, EndFlag},
     loop(Id, ExoSelf_PId, Cx_PId, Scape, AName, {MFanin_PIds, MFanin_PIds}, []).
+
+
+life_SendOutput(Outputs, Scape) when length(Outputs) =:= 4 ->
+    Scape ! {self(), action, Outputs},
+    receive
+        {Scape, Fitness, HaltFlag} -> {Fitness, HaltFlag}
+    after 5000 -> error(life_actuator_timeout)
+    end.

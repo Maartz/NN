@@ -55,6 +55,9 @@ handle_call({get_scape, Type}, {CortexPId, _Ref}, State) ->
                  PS#scape_summary.address
              end,
   {reply, ScapePId, State};
+handle_call({spawn_neuron, ExoSelf_PId}, _From, State) ->
+  NeuronPId = spawn(neuron, prep, [ExoSelf_PId]),
+  {reply, NeuronPId, State};
 handle_call({stop, normal}, _From, State) ->
   {stop, normal, State};
 handle_call({stop, shutdown}, _From, State) ->

@@ -68,6 +68,7 @@
 -export([
     construct/2,
     construct/3,
+    construct/4,
     load_from_file/1,
     save_to_file/2,
     save_genotype/2,
@@ -640,9 +641,16 @@ construct(Morphology,HiddenLayerDensities) ->
 %% ```
 %% genotype:construct(my_network, xor_mimic, [3]).
 %% '''
--spec construct(atom(), atom(), list(pos_integer())) -> list(tuple()).
+-spec construct(file:filename_all(), atom(), list(pos_integer())) -> list(tuple()).
 construct(FileName,Morphology,HiddenLayerDensities) ->
-  rand:seed(exsplus),
+  construct(FileName, Morphology, HiddenLayerDensities, #{}).
+
+%% A seed makes initial weights reproducible; generated component IDs remain unique.
+construct(FileName,Morphology,HiddenLayerDensities,Options) ->
+  case maps:find(seed, Options) of
+    {ok, Seed} -> rand:seed(exsplus, Seed);
+    error -> rand:seed(exsplus)
+  end,
 	S = morphology:get_InitSensor(Morphology),
 	A = morphology:get_InitActuator(Morphology),
 	Output_VL = A#actuator.vector_length,
@@ -659,7 +667,7 @@ construct(FileName,Morphology,HiddenLayerDensities) ->
 	Actuator = A#actuator{cortex_id = Cx_Id,fanin_ids = LL_NIds},
 	Cortex = create_Cortex(Cx_Id,[S#sensor.id],[A#actuator.id],NIds),
 	Genotype = lists:flatten([Cortex,Sensor,Actuator,Neurons]),
-	save_genotype(FileName,Genotype),
+	ok = save_genotype(FileName,Genotype),
 	Genotype.
 
 %% @private
@@ -729,11 +737,15 @@ create_Cortex(Cx_Id,S_Ids,A_Ids,NIds) ->
 %% Genotype = genotype:construct(xor_mimic, [3]),
 %% genotype:save_genotype(my_network, Genotype).
 %% '''
--spec save_genotype(atom(), list(tuple())) -> ok | {error, term()}.
+-spec save_genotype(file:filename_all(), list(tuple())) -> ok | {error, term()}.
 save_genotype(FileName,Genotype)->
-	TId = ets:new(FileName, [public,set,{keypos,2}]),
-	[ets:insert(TId,Element) || Element <- Genotype],
-	ets:tab2file(TId,FileName).
+	TId = ets:new(genotype, [public,set,{keypos,2}]),
+	try
+		true = ets:insert(TId, Genotype),
+		ets:tab2file(TId,FileName)
+	after
+		ets:delete(TId)
+	end.
 
 %% @doc Save ETS table to file
 %%
@@ -750,7 +762,7 @@ save_genotype(FileName,Genotype)->
 %% % ... modify genotype ...
 %% genotype:save_to_file(Genotype, ffnn).
 %% '''
--spec save_to_file(ets:tid(), atom()) -> ok | {error, term()}.
+-spec save_to_file(ets:tid(), file:filename_all()) -> ok | {error, term()}.
 save_to_file(Genotype,FileName)->
 	ets:tab2file(Genotype,FileName).
 
@@ -770,7 +782,7 @@ save_to_file(Genotype,FileName)->
 %% Genotype = genotype:load_from_file(ffnn),
 %% Cortex = genotype:read(Genotype, cortex).
 %% '''
--spec load_from_file(atom()) -> ets:tid().
+-spec load_from_file(file:filename_all()) -> ets:tid().
 load_from_file(FileName)->
 	{ok,TId} = ets:file2tab(FileName),
 	TId.

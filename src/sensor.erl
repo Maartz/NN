@@ -66,7 +66,7 @@
 %% '''
 -spec gen(pid(), node()) -> pid().
 gen(ExoSelfPId, Node) ->
-    spawn(Node, ?MODULE, loop, [ExoSelfPId]).
+    spawn_link(Node, ?MODULE, loop, [ExoSelfPId]).
 
 %%==============================================================================
 %% Sensor Functions
@@ -170,4 +170,13 @@ loop(Id, CortexPId, Scape, SensorName, VL, FanoutPIds) ->
             loop(Id, CortexPId, Scape, SensorName, VL, FanoutPIds);
         {CortexPId, terminate} ->
             ok
+    end.
+
+
+%% Fail explicitly: a timeout must never become a fabricated perception.
+life_GetInput(7, Scape) ->
+    Scape ! {self(), sense},
+    receive
+        {Scape, percept, Vector} when length(Vector) =:= 7 -> Vector
+    after 5000 -> error(life_sensor_timeout)
     end.

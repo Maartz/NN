@@ -75,7 +75,7 @@
 %% Maximum consecutive failed attempts before training terminates
 -define(MAX_ATTEMPTS, 50).
 
--export([map/0, map/1]).
+-export([map/0, map/1, map/2]).
 
 %%==============================================================================
 %% API Functions
@@ -117,10 +117,64 @@ map() -> map(ffnn).
 %% % Map it to a running phenotype
 %% exoself:map(my_network).
 %% '''
--spec map(atom()) -> pid().
+-spec map(file:filename_all()) -> pid().
 map(FileName) ->
-    Genotype = genotype:load_from_file(FileName),
-    spawn(exoself, prep, [FileName, Genotype]).
+    map(FileName, #{}).
+
+%% Results go to the caller, never a global trainer name.
+%% Options: seed, max_attempts, evaluation_limit, fitness_target, timeout (ms).
+%% ATELIER : commencer par docs/TRAIN.md et life_exoself:train/2 pour un appel
+%% synchrone. Ici map/2 renvoie tout de suite un PID, pas le score final.
+%% seed pilote les perturbations ; les poids initiaux viennent du fichier.
+%% evaluation_limit compte les évaluations, première mesure comprise.
+%% max_attempts compte les échecs CONSECUTIFS : le mettre au budget pour
+%% comparer 1 longue recherche et plusieurs départs sans arrêt anticipé.
+%% scape_options => #{life_sim => #{seeds => [11,22,33]}} choisit les mondes.
+%% progress_to => Pid reçoit la courbe du meilleur score après chaque mesure.
+map(FileName, Options) ->
+    Caller = self(),
+    spawn(fun() -> run(FileName, Caller, Options) end).
+
+run(FileName, Caller, Options) ->
+    process_flag(trap_exit, true),
+    put(owner_ref, monitor(process, Caller)),
+    put(result_pid, Caller),
+    put(options, Options),
+    put(children, []),
+    try
+        case maps:find(seed, Options) of
+            {ok, Seed} -> rand:seed(exsplus, Seed);
+            error -> rand:seed(exsplus)
+        end,
+        Genotype = genotype:load_from_file(FileName),
+        prep(FileName, Genotype)
+    catch
+        Class:Reason:Stack ->
+            Caller ! {self(), error, {Class, Reason}},
+            erlang:raise(Class, Reason, Stack)
+    after
+        %% Also covers partial initialization, timeouts and component crashes.
+        [exit(Pid, kill) || Pid <- get(children)]
+    end.
+
+option(Key, Default) -> maps:get(Key, get(options), Default).
+
+remember_child(Pid) ->
+    put(children, [Pid | get(children)]),
+    link(Pid),
+    Pid.
+
+command_neurons(Pids, Command) ->
+    OwnerRef = get(owner_ref),
+    [Pid ! {self(), Command} || Pid <- Pids],
+    [receive
+         {Pid, weights_updated} -> ok;
+         {'EXIT', Child, Reason} -> error({component_failed, Child, Reason});
+         {'DOWN', Ref, process, _, Reason} when Ref =:= OwnerRef ->
+             error({owner_down, Reason})
+     after option(timeout, 5000) -> error({weight_update_timeout, Pid})
+     end || Pid <- Pids],
+    ok.
 
 %%==============================================================================
 %% Internal Functions - Phenotype Construction
@@ -143,7 +197,6 @@ map(FileName) ->
 %% This allows efficient lookups in both directions during linking.
 prep(FileName, Genotype) ->
     % io:format("ExoSelf: Starting prep for ~p~n", [FileName]),
-    rand:seed(exsplus),
     IdsNPIds = ets:new(idsNpids, [set, private]),
     Cx = genotype:read(Genotype, cortex),
     Sensor_Ids = Cx#cortex.sensor_ids,
@@ -160,7 +213,7 @@ prep(FileName, Genotype) ->
     {SPIds, NPIds, APIds} = link_Cortex(Cx, IdsNPIds),
     Cx_PId = ets:lookup_element(IdsNPIds, Cx#cortex.id, 2),
     % io:format("ExoSelf: Entering main loop~n"),
-    loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds, ScapePIds, 0, 0, 0, 0, 1).
+    loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds, ScapePIds, -1, 0, 0, 0, 0).
 
 %%==============================================================================
 %% Training Loop
@@ -172,7 +225,7 @@ prep(FileName, Genotype) ->
 %% Implements a simple hill-climbing algorithm:
 %% - After each evaluation, compare fitness to previous best
 %% - If improved: backup weights, reset attempt counter
-%% - If degraded: restore previous weights, increment attempts
+%% - If equal or degraded: restore previous weights, increment attempts
 %% - Perturb random subset of neurons (P = 1/√N per neuron)
 %% - Terminate after MAX_ATTEMPTS consecutive failures
 %%
@@ -192,53 +245,66 @@ prep(FileName, Genotype) ->
 %% - `Attempt' - Consecutive failed attempts counter
 %%
 %% === Training Termination ===
-%% Training ends when `Attempt >= MAX_ATTEMPTS' (default: 50).
+%% Training ends at the failure, evaluation or fitness limit in map/2 options.
 %% At termination:
 %% 1. Backup final weights to genotype
 %% 2. Terminate all processes
 %% 3. Report statistics (fitness, evaluations, cycles, time)
-%% 4. Notify trainer process if registered
+%% 4. Notify the calling process directly
 loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds, ScapePIds, HighestFitness, EvalAcc, CycleAcc, TimeAcc, Attempt) ->
-    % io:format("ExoSelf: Waiting for evaluation (Attempt ~p)~n", [Attempt]),
+    OwnerRef = get(owner_ref),
     receive
         {Cx_PId, evaluation_completed, Fitness, Cycles, Time} ->
+            %% ATELIER / compteurs : Fitness est le score de l'essai courant ;
+            %% HighestFitness est le meilleur score AVANT cet essai.
+            %% EvalAcc = 0 : mesure initiale, aucune mutation à classer.
+            %% Sinon classer ici >, == ou < pour improved/equal/worse.
+            %% Une égalité de score ne prouve ni des poids ni des actions égaux.
             {U_HighestFitness, U_Attempt} = case Fitness > HighestFitness of
                 true ->
-                    % Fitness improved - backup new weights
-                    [NPId ! {self(), weight_backup} || NPId <- NPIds],
+                    command_neurons(NPIds, weight_backup),
                     {Fitness, 0};
                 false ->
-                    % Fitness degraded - restore previous weights
-                    Perturbed_NPIds = get(perturbed),
-                    [NPId ! {self(), weight_restore} || NPId <- Perturbed_NPIds],
+                    command_neurons(get(perturbed), weight_restore),
                     {HighestFitness, Attempt + 1}
             end,
-            case U_Attempt >= ?MAX_ATTEMPTS of
+            U_Evals = EvalAcc + 1,
+            U_Cycles = CycleAcc + Cycles,
+            U_Time = TimeAcc + Time,
+            %% Cette courbe ne contient que le meilleur score. Pour l'atelier,
+            %% ajouter candidate_score => Fitness et outcome => ... au message
+            %% permet de garder les essais refusés aussi. life_exoself:await/3
+            %% conserve déjà chaque Entry entière dans history.
+            case option(progress_to, undefined) of
+                Observer when is_pid(Observer) ->
+                    Observer ! {self(), progress, #{evaluations => U_Evals, score => U_HighestFitness}};
+                undefined -> ok
+            end,
+            Done = U_Attempt >= option(max_attempts, ?MAX_ATTEMPTS)
+                orelse U_Evals >= option(evaluation_limit, 10000)
+                orelse U_HighestFitness >= option(fitness_target, inf),
+            case Done of
                 true ->
-                    % Training complete - save and terminate
-                    U_CycleAcc = CycleAcc + Cycles,
-                    U_TimeAcc = TimeAcc + Time,
                     backup_genotype(FileName, IdsNPIds, Genotype, NPIds),
                     terminate_phenotype(Cx_PId, SPIds, NPIds, APIds, ScapePIds),
-                    io:format("Cortex:~p finished training. Genotype has been backed up.~n Fitness:~p~n TotEvaluations:~p~n TotCycles:~p~n TimeAcc:~p~n",
-                             [Cx_PId, U_HighestFitness, EvalAcc, U_CycleAcc, U_TimeAcc]),
-
-                    case whereis(trainer) of
-                        undefined ->
-                            ok;
-                        PId ->
-                            PId ! {self(), U_HighestFitness, EvalAcc, U_CycleAcc, U_TimeAcc}
-                    end;
+                    get(result_pid) ! {self(), U_HighestFitness, U_Evals, U_Cycles, U_Time};
                 false ->
-                    % Continue training - perturb and reactivate
-                    Tot_Neurons = length(NPIds),
-                    MP = 1 / math:sqrt(Tot_Neurons),
-                    Perturb_NPIds = [NPId || NPId <- NPIds, rand:uniform() < MP],
-                    put(perturbed, Perturb_NPIds),
-                    [NPId ! {self(), weight_perturb} || NPId <- Perturb_NPIds],
+                    %% Premier tirage : quels neurones modifier ? Il peut
+                    %% n'en sélectionner aucun. Le deuxième tirage, dans
+                    %% neuron:perturb_IPIdPs/1, choisit leurs coefficients.
+                    %% Même un neurone sélectionné peut garder tous ses poids.
+                    %% Mesurer ces cas avant de changer les probabilités.
+                    MP = 1 / math:sqrt(length(NPIds)),
+                    Perturbed = [Pid || Pid <- NPIds, rand:uniform() < MP],
+                    put(perturbed, Perturbed),
+                    command_neurons(Perturbed, weight_perturb),
                     Cx_PId ! {self(), reactivate},
-                    loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds, ScapePIds, U_HighestFitness, EvalAcc + 1, CycleAcc + Cycles, TimeAcc + Time, U_Attempt)
-            end
+                    loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds,
+                         ScapePIds, U_HighestFitness, U_Evals, U_Cycles, U_Time, U_Attempt)
+            end;
+        {'EXIT', Child, Reason} -> error({component_failed, Child, Reason});
+        {'DOWN', OwnerRef, process, _, Reason} -> error({owner_down, Reason})
+    after option(timeout, 5000) -> error(evaluation_timeout)
     end.
 
 %%==============================================================================
@@ -253,7 +319,7 @@ loop(FileName, Genotype, IdsNPIds, Cx_PId, SPIds, NPIds, APIds, ScapePIds, Highe
 %%
 %% Calls the `gen/2' function of the appropriate module dynamically.
 spawn_CerebralUnits(IdsNPIds, CerebralUnitType, [Id | Ids]) ->
-    PId = CerebralUnitType:gen(self(), node()),
+    PId = remember_child(CerebralUnitType:gen(self(), node())),
     ets:insert(IdsNPIds, {Id, PId}),
     ets:insert(IdsNPIds, {PId, Id}),
     spawn_CerebralUnits(IdsNPIds, CerebralUnitType, Ids);
@@ -275,10 +341,13 @@ spawn_Scapes(IdsNPIds, Genotype, Sensor_Ids, Actuator_Ids) ->
     Sensor_Scapes = [(genotype:read(Genotype, Id))#sensor.scape || Id <- Sensor_Ids],
     Actuator_Scapes = [(genotype:read(Genotype, Id))#actuator.scape || Id <- Actuator_Ids],
     Unique_Scapes = Sensor_Scapes ++ (Actuator_Scapes -- Sensor_Scapes),
-    SN_Tuples = [{scape:gen(self(), node()), ScapeName} || {private, ScapeName} <- Unique_Scapes],
+    SN_Tuples = [{remember_child(scape:gen(self(), node())), ScapeName} || {private, ScapeName} <- Unique_Scapes],
     [ets:insert(IdsNPIds, {ScapeName, PId}) || {PId, ScapeName} <- SN_Tuples],
     [ets:insert(IdsNPIds, {PId, ScapeName}) || {PId, ScapeName} <- SN_Tuples],
-    [PId ! {self(), ScapeName} || {PId, ScapeName} <- SN_Tuples],
+    [case maps:find(ScapeName, option(scape_options, #{})) of
+         {ok, Options} -> PId ! {self(), ScapeName, Options};
+         error -> PId ! {self(), ScapeName}
+     end || {PId, ScapeName} <- SN_Tuples],
     [PId || {PId, _ScapeName} <- SN_Tuples].
 
 %%==============================================================================
@@ -356,6 +425,7 @@ link_Neurons(Genotype, [NId | Neuron_Ids], IdsNPIds) ->
     Output_Ids = R#neuron.output_ids,
     Input_PIdPs = convert_neuron_weights_to_process_weights(IdsNPIds, Input_IdPs, []),
     Output_PIds = [ets:lookup_element(IdsNPIds, Id, 2) || Id <- Output_Ids],
+    NPId ! {self(), seed, rand:uniform(1 bsl 58)},
     NPId ! {self(), {NId, Cx_PId, AFName, Input_PIdPs, Output_PIds}},
     link_Neurons(Genotype, Neuron_Ids, IdsNPIds);
 link_Neurons(_Genotype, [], _IdsNPIds) ->
@@ -399,7 +469,7 @@ link_Cortex(Cx, IdsNPIds) ->
 backup_genotype(FileName, IdsNPIds, Genotype, NPIds) ->
     Neuron_IdsNWeights = get_backup(NPIds, []),
     update_genotype(IdsNPIds, Genotype, Neuron_IdsNWeights),
-    genotype:save_to_file(Genotype, FileName).
+    ok = genotype:save_to_file(Genotype, FileName).
     % io:format("Finished updating genotype to file:~p~n", [FileName]).
 
 %% @private
@@ -408,10 +478,14 @@ backup_genotype(FileName, IdsNPIds, Genotype, NPIds) ->
 %% Sends `{get_backup}' message to each neuron and collects
 %% their responses: `{NPId, NId, WeightTuples}'.
 get_backup([NPId | NPIds], Acc) ->
+    OwnerRef = get(owner_ref),
     NPId ! {self(), get_backup},
     receive
         {NPId, NId, WeightTuples} ->
-            get_backup(NPIds, [{NId, WeightTuples} | Acc])
+            get_backup(NPIds, [{NId, WeightTuples} | Acc]);
+        {'EXIT', Child, Reason} -> error({component_failed, Child, Reason});
+        {'DOWN', OwnerRef, process, _, Reason} -> error({owner_down, Reason})
+    after option(timeout, 5000) -> error({backup_timeout, NPId})
     end;
 get_backup([], Acc) ->
     Acc.
